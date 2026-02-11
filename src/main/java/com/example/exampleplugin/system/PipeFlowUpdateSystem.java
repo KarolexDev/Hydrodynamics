@@ -8,7 +8,6 @@ import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockFace;
 import com.hypixel.hytale.server.core.modules.block.BlockModule.BlockStateInfo;
-import com.hypixel.hytale.server.core.universe.world.SetBlockSettings;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
@@ -16,7 +15,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 public class PipeFlowUpdateSystem extends EntityTickingSystem<ChunkStore> {
-
+    
     private final ComponentType<ChunkStore, FluidStorageComponent> fluidStorageType;
     private static int count = 0;
     private static float _totalOriginTransfer = 0f;
@@ -50,6 +49,7 @@ public class PipeFlowUpdateSystem extends EntityTickingSystem<ChunkStore> {
      * For now the method has been naively implemented and it iterates through every neighboring block
      * instead of connected ones.
      * TODO: Implement ConnectedBlocks somehow.
+     * TODO: Do logic first, then push to commandBuffer.
      * */
     void updateNeighborsAndOrigin(Vector3i originBlockCoords,
                          @NonNull World world,
