@@ -1,100 +1,31 @@
 {
-  "ConnectsToOtherMaterials":true,
+  "ConnectsToOtherMaterials": true,
   "DefaultShape": "Disconnected",
   "Shapes": {
     "Disconnected": {
       "FaceTags": {
+        "East": [
+          "PipeConnection"
+        ],
+        "West": [
+          "PipeConnection"
+        ],
+        "South": [
+          "PipeConnection"
+        ],
+        "North": [
+          "PipeConnection"
+        ],
+        "Up": [
+          "PipeConnection"
+        ],
+        "Down": [
+          "PipeConnection"
+        ]
       },
-      "PatternsToMatchAnyOf": [
-        {
-          "Type": "Custom",
-          "AllowedPatternTransformations": {
-            "IsCardinallyRotatable": false
-          },
-          "RulesToMatch": [
-            {
-              "Position": {
-                "X": -1,
-                "Y": 0,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "East": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 1,
-                "Y": 0,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "West": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": -1,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "Up": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": 1,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "Down": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": 0,
-                "Z": -1
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "South": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": 0,
-                "Z": 1
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "North": [
-                  "PipeConnection"
-                ]
-              }
-            }
-          ]
-        }
-      ]
+      "PatternsToMatchAnyOf": []
     },
-    "I-Flat": {
+    "IFlat": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -192,7 +123,7 @@
         }
       ]
     },
-    "I-Vert": {
+    "IVert": {
       "FaceTags": {
         "Up": [
           "PipeConnection"
@@ -290,7 +221,7 @@
         }
       ]
     },
-    "L-Up": {
+    "LUp": {
       "FaceTags": {
         "West": [
           "PipeConnection"
@@ -388,7 +319,7 @@
         }
       ]
     },
-    "L-Down": {
+    "LDown": {
       "FaceTags": {
         "West": [
           "PipeConnection"
@@ -486,7 +417,7 @@
         }
       ]
     },
-    "L-Flat": {
+    "LFlat": {
       "FaceTags": {
         "West": [
           "PipeConnection"
@@ -584,7 +515,7 @@
         }
       ]
     },
-    "T-Up": {
+    "TUp": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -685,7 +616,7 @@
         }
       ]
     },
-    "T-Down": {
+    "TDown": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -786,7 +717,7 @@
         }
       ]
     },
-    "T-Flat": {
+    "TFlat": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -887,7 +818,7 @@
         }
       ]
     },
-    "T-Curved-Up": {
+    "TCurvedUp": {
       "FaceTags": {
         "West": [
           "PipeConnection"
@@ -988,7 +919,7 @@
         }
       ]
     },
-    "T-Curved-Down": {
+    "TCurvedDown": {
       "FaceTags": {
         "West": [
           "PipeConnection"
@@ -1089,7 +1020,7 @@
         }
       ]
     },
-    "X-Up": {
+    "XUp": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -1193,7 +1124,7 @@
         }
       ]
     },
-    "X-Down": {
+    "XDown": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -1297,7 +1228,7 @@
         }
       ]
     },
-    "X-Flat": {
+    "XFlat": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -1401,7 +1332,7 @@
         }
       ]
     },
-    "XT-Up": {
+    "XTUp": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -1508,7 +1439,7 @@
         }
       ]
     },
-    "XT-Down": {
+    "XTDown": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -1615,7 +1546,7 @@
         }
       ]
     },
-    "XT-Side": {
+    "XTSide": {
       "FaceTags": {
         "East": [
           "PipeConnection"
@@ -1637,7 +1568,7 @@
         {
           "Type": "Custom",
           "AllowedPatternTransformations": {
-            "IsCardinallyRotatable": false
+            "IsCardinallyRotatable": true
           },
           "RulesToMatch": [
             {
