@@ -65,6 +65,33 @@
           ],
           "CustomModel": "Resources/Debug_Pipes/debug_pipe_Iflat.blockymodel"
         },
+        "Stubup": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Stubup.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Stubup.blockymodel"
+        },
+        "Stubdown": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Stubdown.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Stubdown.blockymodel"
+        },
+        "Stubside": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Stubside.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Stubside.blockymodel"
+        },
         "Ivert": {
           "CustomModelTexture": [
             {
@@ -128,6 +155,15 @@
           ],
           "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tflat.blockymodel"
         },
+        "Tside": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Tside.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tside.blockymodel"
+        },
         "Tcurvedup": {
           "CustomModelTexture": [
             {
@@ -164,6 +200,15 @@
           ],
           "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xdown.blockymodel"
         },
+        "Xcurved": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Xcurved.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xcurved.blockymodel"
+        },
         "Xflat": {
           "CustomModelTexture": [
             {
@@ -172,6 +217,15 @@
             }
           ],
           "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xflat.blockymodel"
+        },
+        "Xside": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Xside.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xside.blockymodel"
         },
         "XTup": {
           "CustomModelTexture": [
@@ -216,6 +270,9 @@
       "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
       "TemplateShapeBlockPatterns": {
         "Disconnected": "Debug_Pipe",
+        "StubUp": "*Debug_Pipe_State_Definitions_Stubup",
+        "StubDown": "*Debug_Pipe_State_Definitions_Stubdown",
+        "StubSide": "*Debug_Pipe_State_Definitions_Stubside",
         "IFlat": "*Debug_Pipe_State_Definitions_Iflat",
         "IVert": "*Debug_Pipe_State_Definitions_Ivert",
         "LUp": "*Debug_Pipe_State_Definitions_Lup",
@@ -224,11 +281,14 @@
         "TUp": "*Debug_Pipe_State_Definitions_Tup",
         "TDown": "*Debug_Pipe_State_Definitions_Tdown",
         "TFlat": "*Debug_Pipe_State_Definitions_Tflat",
+        "TSide": "*Debug_Pipe_State_Definitions_Tside",
         "TCurvedUp": "*Debug_Pipe_State_Definitions_Tcurvedup",
         "TCurvedDown": "*Debug_Pipe_State_Definitions_Tcurveddown",
         "XUp": "*Debug_Pipe_State_Definitions_Xup",
         "XDown": "*Debug_Pipe_State_Definitions_Xdown",
+        "XCurved": "*Debug_Pipe_State_Definitions_Xcurved",
         "XFlat": "*Debug_Pipe_State_Definitions_Xflat",
+        "XSide": "*Debug_Pipe_State_Definitions_Xside",
         "XTUp": "*Debug_Pipe_State_Definitions_XTup",
         "XTDown": "*Debug_Pipe_State_Definitions_XTdown",
         "XTSide": "*Debug_Pipe_State_Definitions_XTside",
