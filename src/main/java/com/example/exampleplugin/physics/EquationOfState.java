@@ -25,9 +25,9 @@ public abstract class EquationOfState {
         this.particle_flow = 0f;
     }
 
-    protected abstract float getT();
-    protected abstract float getP();
-    protected abstract float getU();
+    protected abstract float getTemperature();
+    protected abstract float getPressure();
+    protected abstract float getInnerEnergy();
 
     public float getEntropy() { return this.entropy; }
     public float getVolume() { return this.volume; }

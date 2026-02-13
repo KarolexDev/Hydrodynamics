@@ -1,0 +1,329 @@
+{
+  "TranslationProperties": {
+    "Name": "server.items.Debug_Pipe.name"
+  },
+  "ItemLevel": 15,
+  "MaxStack": 100,
+  "Icon": "Icons/ItemsGenerated/Debug_Pipe.png",
+  "Categories": [
+    "Blocks.Structural"
+  ],
+  "PlayerAnimationsId": "Item",
+  "Interactions": {
+    "Primary": "Block_Primary",
+    "Secondary": "Block_Secondary",
+    "Use": "ConfigurePipe"
+  },
+  "Set": "Wood_Softwood_Planks",
+  "Recipe": {
+    "Input": [
+      {
+        "ResourceTypeId": "Wood_Softwood",
+        "Quantity": 1
+      }
+    ],
+    "BenchRequirement": [
+      {
+        "Id": "Builders",
+        "Type": "StructuralCrafting",
+        "Categories": [
+          "Wall"
+        ]
+      }
+    ],
+    "OutputQuantity": 2
+  },
+  "BlockType": {
+    "BlockEntity": {
+      "Components": {
+        "ThermodynamicEnsembleComponent": {
+          "InitialTemperature": 200,
+          "Volume": 64,
+          "Molarity": 100
+        }
+      }
+    },
+    "Material": "Solid",
+    "DrawType": "Model",
+    "Opacity": "Transparent",
+    "CustomModel": "Resources/Debug_Pipes/debug_pipe_disconnected.blockymodel",
+    "CustomModelTexture": [
+      {
+        "Texture": "Resources/Debug_Pipes/debug_pipe_disconnected.png",
+        "Weight": 1
+      }
+    ],
+    "Group": "Wood",
+    "Flags": {},
+    "Gathering": {
+      "Breaking": {
+        "GatherType": "Woods",
+        "ItemId": "Wood_Softwood_Fence"
+      }
+    },
+    "BlockParticleSetId": "Wood",
+    "ParticleColor": "#65482d",
+    "BlockSoundSetId": "Wood",
+    "State": {
+      "Definitions": {
+        "Iflat": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Iflat.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Iflat.blockymodel"
+        },
+        "Stubup": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Stubup.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Stubup.blockymodel"
+        },
+        "Stubdown": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Stubdown.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Stubdown.blockymodel"
+        },
+        "Stubside": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Stubside.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Stubside.blockymodel"
+        },
+        "Ivert": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Ivert.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Ivert.blockymodel"
+        },
+        "Lup": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Lup.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Lup.blockymodel"
+        },
+        "Ldown": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Ldown.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Ldown.blockymodel"
+        },
+        "Lflat": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Lflat.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Lflat.blockymodel"
+        },
+        "Tup": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Tup.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tup.blockymodel"
+        },
+        "Tdown": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Tdown.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tdown.blockymodel"
+        },
+        "Tflat": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Tflat.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tflat.blockymodel"
+        },
+        "Tside": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Tside.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tside.blockymodel"
+        },
+        "Tcurvedup": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Tcurvedup.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tcurvedup.blockymodel"
+        },
+        "Tcurveddown": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Tcurveddown.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Tcurveddown.blockymodel"
+        },
+        "Xup": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Xup.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xup.blockymodel"
+        },
+        "Xdown": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Xdown.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xdown.blockymodel"
+        },
+        "Xcurved": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Xcurved.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xcurved.blockymodel"
+        },
+        "Xflat": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Xflat.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xflat.blockymodel"
+        },
+        "Xside": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_Xside.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_Xside.blockymodel"
+        },
+        "XTup": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_XTup.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_XTup.blockymodel"
+        },
+        "XTdown": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_XTdown.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_XTdown.blockymodel"
+        },
+        "XTside": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_XTside.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_XTside.blockymodel"
+        },
+        "Fullyconnected": {
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Pipes/debug_pipe_fullyconnected.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModel": "Resources/Debug_Pipes/debug_pipe_fullyconnected.blockymodel"
+        }
+      }
+    },
+    "ConnectedBlockRuleSet": {
+      "Type": "CustomTemplate",
+      "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
+      "TemplateShapeBlockPatterns": {
+        "Disconnected": "Debug_Pipe",
+        "StubUp": "*Debug_Pipe_State_Definitions_Stubup",
+        "StubDown": "*Debug_Pipe_State_Definitions_Stubdown",
+        "StubSide": "*Debug_Pipe_State_Definitions_Stubside",
+        "IFlat": "*Debug_Pipe_State_Definitions_Iflat",
+        "IVert": "*Debug_Pipe_State_Definitions_Ivert",
+        "LUp": "*Debug_Pipe_State_Definitions_Lup",
+        "LDown": "*Debug_Pipe_State_Definitions_Ldown",
+        "LFlat": "*Debug_Pipe_State_Definitions_Lflat",
+        "TUp": "*Debug_Pipe_State_Definitions_Tup",
+        "TDown": "*Debug_Pipe_State_Definitions_Tdown",
+        "TFlat": "*Debug_Pipe_State_Definitions_Tflat",
+        "TSide": "*Debug_Pipe_State_Definitions_Tside",
+        "TCurvedUp": "*Debug_Pipe_State_Definitions_Tcurvedup",
+        "TCurvedDown": "*Debug_Pipe_State_Definitions_Tcurveddown",
+        "XUp": "*Debug_Pipe_State_Definitions_Xup",
+        "XDown": "*Debug_Pipe_State_Definitions_Xdown",
+        "XCurved": "*Debug_Pipe_State_Definitions_Xcurved",
+        "XFlat": "*Debug_Pipe_State_Definitions_Xflat",
+        "XSide": "*Debug_Pipe_State_Definitions_Xside",
+        "XTUp": "*Debug_Pipe_State_Definitions_XTup",
+        "XTDown": "*Debug_Pipe_State_Definitions_XTdown",
+        "XTSide": "*Debug_Pipe_State_Definitions_XTside",
+        "FullyConnected": "*Debug_Pipe_State_Definitions_Fullyconnected"
+      }
+    }
+  },
+  "Tags": {
+    "Type": [
+      "Wood"
+    ],
+    "Family": [
+      "Hardwood"
+    ]
+  },
+  "IconProperties": {
+    "Scale": 1.8,
+    "Rotation": [
+      22.5,
+      45,
+      22.5
+    ],
+    "Translation": [
+      0,
+      -13.5
+    ]
+  }
+}

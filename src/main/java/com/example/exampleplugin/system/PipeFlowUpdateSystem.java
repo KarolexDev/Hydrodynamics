@@ -1,135 +1,89 @@
 package com.example.exampleplugin.system;
 
-import com.example.exampleplugin.component.FluidStorageComponent;
+import com.example.exampleplugin.component.ThermodynamicEnsembleComponent;
+import com.example.exampleplugin.physics.ThermodynamicsUtil;
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.system.tick.EntityTickingSystem;
+import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.math.vector.Vector3i;
-import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockFace;
-import com.hypixel.hytale.server.core.modules.block.BlockModule.BlockStateInfo;
+import com.hypixel.hytale.server.core.modules.block.BlockModule;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-public class PipeFlowUpdateSystem extends EntityTickingSystem<ChunkStore> {
-    
-    private final ComponentType<ChunkStore, FluidStorageComponent> fluidStorageType;
-    private static int count = 0;
-    private static float _totalOriginTransfer = 0f;
+import static com.example.exampleplugin.system.ConnectedPipeUtil.getConnectedPipes;
 
-    public PipeFlowUpdateSystem(ComponentType<ChunkStore, FluidStorageComponent> fluidStorageType) {
+public class PipeFlowUpdateSystem extends EntityTickingSystem<ChunkStore> {
+
+    private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
+    private final ComponentType<ChunkStore, ThermodynamicEnsembleComponent> thermodynamicEnsembleComponentType = ThermodynamicEnsembleComponent.getComponentType();
+    private final Query<ChunkStore> query = Query.and(new Query[]{ThermodynamicEnsembleComponent.getComponentType()});
+
+    public PipeFlowUpdateSystem() {
         super();
-        this.fluidStorageType = fluidStorageType;
     }
 
     @Override
-    public void tick(float dt, int index,
-                     @NonNull ArchetypeChunk<ChunkStore> chunk,
-                     @NonNull Store<ChunkStore> store,
-                     @NonNull CommandBuffer<ChunkStore> commandBuffer) {
-
-        ++count;
-        if (!(count % 10 == 0)) { return; }
-
-        BlockStateInfo stateInfo = chunk.getComponent(index, BlockStateInfo.getComponentType());
+    public void tick(
+            float dt,
+            int index,
+            @NonNull ArchetypeChunk<ChunkStore> chunk,
+            @NonNull Store<ChunkStore> store,
+            @NonNull CommandBuffer<ChunkStore> commandBuffer
+    ) {
+        BlockModule.BlockStateInfo stateInfo = chunk.getComponent(index, BlockModule.BlockStateInfo.getComponentType());
         if (stateInfo == null) { return; }
         WorldChunk wc = commandBuffer.getComponent(stateInfo.getChunkRef(), WorldChunk.getComponentType());
+        World world = wc.getWorld();
 
-        int i = stateInfo.getIndex();
-        int x = ChunkUtil.worldCoordFromLocalCoord(wc.getX(), ChunkUtil.xFromBlockInColumn(i));
-        int y = ChunkUtil.yFromBlockInColumn(i);
-        int z = ChunkUtil.worldCoordFromLocalCoord(wc.getZ(), ChunkUtil.zFromBlockInColumn(i));
+        int x = ChunkUtil.worldCoordFromLocalCoord(wc.getX(), ChunkUtil.xFromBlockInColumn(index));
+        int y = ChunkUtil.yFromBlockInColumn(index);
+        int z = ChunkUtil.worldCoordFromLocalCoord(wc.getZ(), ChunkUtil.zFromBlockInColumn(index));
 
-        updateNeighborsAndOrigin(new Vector3i(x, y, z), wc.getWorld(), wc, dt, commandBuffer, stateInfo);
-    }
-    /** Logic for transfering fluid levels between neighboring blocks.
-     * For now the method has been naively implemented and it iterates through every neighboring block
-     * instead of connected ones.
-     * TODO: Implement ConnectedBlocks somehow.
-     * TODO: Do logic first, then push to commandBuffer.
-     * */
-    void updateNeighborsAndOrigin(Vector3i originBlockCoords,
-                         @NonNull World world,
-                         WorldChunk wc,
-                         float dt,
-                         CommandBuffer<ChunkStore> commandBuffer,
-                         BlockStateInfo stateInfo
-    ) {
-        Holder<ChunkStore> originBlockComponentHolder = world.getBlockComponentHolder(originBlockCoords.x, originBlockCoords.y, originBlockCoords.z);
-        assert originBlockComponentHolder != null;
-        FluidStorageComponent originFluidStorageComponent = originBlockComponentHolder.getComponent(fluidStorageType);
-        assert originFluidStorageComponent != null;
+        Vector3i originCoords = new Vector3i(x, y, z);
 
-        float originFluidLevel = originFluidStorageComponent.getCurrentStorage();
-        _totalOriginTransfer = 0f;
-        
-        for (Vector3i neighborBlockCoords : getBlockFaces(originBlockCoords)) {
-            commandBuffer.run((store) -> {
-                Holder<ChunkStore> neighborBlockComponentHolder = world.getBlockComponentHolder(neighborBlockCoords.x, neighborBlockCoords.y, neighborBlockCoords.z);
-                if (neighborBlockComponentHolder == null) {
-                    return;
+        commandBuffer.run((s) -> {
+            ThermodynamicEnsembleComponent originBlockThermalComponent = store.getComponent(chunk.getReferenceTo(index), ThermodynamicEnsembleComponent.getComponentType());
+
+            for (ConnectedPipeUtil.ConnectedPipe connectedPipe : getConnectedPipes(originCoords, chunk, commandBuffer, world)) {
+                Vector3i neighborCoords = connectedPipe.position();
+                if (!shouldProcessPair(originCoords, neighborCoords)) {
+                    continue;
                 }
-                FluidStorageComponent neighborFluidStorageComponent = neighborBlockComponentHolder.getComponent(fluidStorageType);
-                if (neighborFluidStorageComponent == null) {
-                    return;
-                }
+                Ref<ChunkStore> connectedPipeRef = connectedPipe.ref();
 
-                float neighborFluidLevel = neighborFluidStorageComponent.getCurrentStorage();
+                ThermodynamicEnsembleComponent neighborBlockThermalComponent = store.getComponent(connectedPipeRef, ThermodynamicEnsembleComponent.getComponentType());
 
-                // Fluid Transfer Logic
-                float difference = originFluidLevel - neighborFluidLevel;
-                float transferRate = 1f;    // Sets min transfer rate
-                float transferAmount = transferRate * difference * dt;
-                _totalOriginTransfer += transferAmount;
-
-                float newNeighborLevel = neighborFluidLevel + transferAmount;
-
-                neighborFluidStorageComponent.setCurrentStorage(newNeighborLevel);
-                if (wc.getBlockComponentEntity(neighborBlockCoords.x, neighborBlockCoords.y, neighborBlockCoords.z) == null) {
-                    return;
-                }
-                commandBuffer.replaceComponent(wc.getBlockComponentEntity(neighborBlockCoords.x, neighborBlockCoords.y, neighborBlockCoords.z), fluidStorageType, new FluidStorageComponent(100f, newNeighborLevel));
-                if (count % 10 == 0) { updateBlockState(neighborBlockCoords, "pipe" + Math.round(newNeighborLevel / 10), world, commandBuffer, stateInfo); }
-            }
-            );
-        }
-        float newOriginLevel = originFluidLevel - _totalOriginTransfer;
-        originFluidStorageComponent.setCurrentStorage(newOriginLevel);
-         if (wc.getBlockComponentEntity(originBlockCoords.x, originBlockCoords.y, originBlockCoords.z) == null) { return; }
-         commandBuffer.replaceComponent(wc.getBlockComponentEntity(originBlockCoords.x, originBlockCoords.y, originBlockCoords.z), fluidStorageType, new FluidStorageComponent(100f, newOriginLevel));
-
-        if (count % 10 == 0) { updateBlockState(originBlockCoords, "pipe" + Math.round(newOriginLevel / 10), world, commandBuffer, stateInfo); }
-    }
-    /** Helper function for getting the coordinates of the neighboring blocks. */
-    // TODO: There exists better implementation (with ENUM)
-    Vector3i[] getBlockFaces(Vector3i origin) {
-        Vector3i[] result = new Vector3i[6];
-        for(int i = 0; i < 6; i++) {
-            result[i] = origin.clone().add(BlockFace.values()[i].getDirection());
-        }
-        return result;
-    }
-    /** Helper function for changing the block texture. */
-    void updateBlockState(Vector3i currentBlockCoords, String state, World world, CommandBuffer<ChunkStore> command, BlockStateInfo stateInfo) {
-        command.run(
-            (store) -> {
-                WorldChunk wc = store.getComponent(stateInfo.getChunkRef(), WorldChunk.getComponentType());
-                wc.setBlockInteractionState(
-                        currentBlockCoords.x,
-                        currentBlockCoords.y,
-                        currentBlockCoords.z,
-                        wc.getBlockType(currentBlockCoords),
-                        state,
-                        true
+                ThermodynamicsUtil.equilibrate(
+                        dt,
+                        originBlockThermalComponent,
+                        neighborBlockThermalComponent
                 );
             }
-        );
+            ThermodynamicsUtil.equilibrate_with_environment(
+                    dt,
+                    originBlockThermalComponent,
+                    300f
+            );
+        });
     }
+
+    private boolean shouldProcessPair(Vector3i origin, Vector3i neighbor) {
+        if (origin.x != neighbor.x) {
+            return origin.x < neighbor.x;
+        }
+        if (origin.y != neighbor.y) {
+            return origin.y < neighbor.y;
+        }
+        return origin.z < neighbor.z;
+    }
+
     @Override
     public @Nullable Query<ChunkStore> getQuery() {
-        return fluidStorageType;
+        return this.query;
     }
 }

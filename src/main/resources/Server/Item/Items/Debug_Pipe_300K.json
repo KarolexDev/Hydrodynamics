@@ -11,7 +11,8 @@
   "PlayerAnimationsId": "Item",
   "Interactions": {
     "Primary": "Block_Primary",
-    "Secondary": "Block_Secondary"
+    "Secondary": "Block_Secondary",
+    "Use": "ConfigurePipe"
   },
   "Set": "Wood_Softwood_Planks",
   "Recipe": {
@@ -33,6 +34,15 @@
     "OutputQuantity": 2
   },
   "BlockType": {
+    "BlockEntity": {
+      "Components": {
+        "ThermodynamicEnsembleComponent": {
+          "InitialTemperature": 300,
+          "Volume": 64,
+          "Molarity": 100
+        }
+      }
+    },
     "Material": "Solid",
     "DrawType": "Model",
     "Opacity": "Transparent",

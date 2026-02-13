@@ -1,9 +1,8 @@
 package com.example.exampleplugin.interaction;
 
 import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.component.FluidStorageComponent;
+import com.example.exampleplugin.component.ThermodynamicEnsembleComponent;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
-import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.logger.HytaleLogger;
@@ -58,15 +57,16 @@ public class ConfigurePipeInteraction extends SimpleInteraction {
             Ref<ChunkStore> componentRef = worldChunk.getBlockComponentEntity(targetVec.x, targetVec.y, targetVec.z);
             if (componentRef == null) { return; }
 
-            if (world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getFluidStorageComponentType()) == null) { return; }
-            FluidStorageComponent fluidStorageComponent = (FluidStorageComponent) world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getFluidStorageComponentType());
+            if (world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getThermodynamicEnsembleComponentType()) == null) { return; }
+            ThermodynamicEnsembleComponent thermodynamicEnsembleComponent = (ThermodynamicEnsembleComponent) world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getThermodynamicEnsembleComponentType());
 
             player.sendMessage(Message.raw("Interacted with this custom interaction code..."));
 
-            if(fluidStorageComponent != null) {
-                player.sendMessage(Message.raw("This block has an Energy Component! Current energy: " + fluidStorageComponent.getCurrentStorage()));
+            if(thermodynamicEnsembleComponent != null) {
+                player.sendMessage(Message.raw("This block has a Thermal Component! Current Temperature: " + thermodynamicEnsembleComponent.data.getTemperature()));
+                player.sendMessage(Message.raw("\t\t Current Entropy: " + thermodynamicEnsembleComponent.data.entropy));
             } else {
-                player.sendMessage(Message.raw("This block does NOT have an Energy Component!"));
+                player.sendMessage(Message.raw("This block does NOT have a Thermal Component!"));
             }
         }
     }
