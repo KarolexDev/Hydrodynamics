@@ -36,10 +36,10 @@
   "BlockType": {
     "BlockEntity": {
       "Components": {
-        "ThermodynamicEnsembleComponent": {
-          "InitialTemperature": 300,
+        "ThermalComponent": {
+          "Energy": 300,
           "Volume": 64,
-          "Molarity": 100
+          "ParticleCount": 100
         }
       }
     },
@@ -279,30 +279,30 @@
       "Type": "CustomTemplate",
       "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
       "TemplateShapeBlockPatterns": {
-        "Disconnected": "Debug_Pipe",
-        "StubUp": "*Debug_Pipe_State_Definitions_Stubup",
-        "StubDown": "*Debug_Pipe_State_Definitions_Stubdown",
-        "StubSide": "*Debug_Pipe_State_Definitions_Stubside",
-        "IFlat": "*Debug_Pipe_State_Definitions_Iflat",
-        "IVert": "*Debug_Pipe_State_Definitions_Ivert",
-        "LUp": "*Debug_Pipe_State_Definitions_Lup",
-        "LDown": "*Debug_Pipe_State_Definitions_Ldown",
-        "LFlat": "*Debug_Pipe_State_Definitions_Lflat",
-        "TUp": "*Debug_Pipe_State_Definitions_Tup",
-        "TDown": "*Debug_Pipe_State_Definitions_Tdown",
-        "TFlat": "*Debug_Pipe_State_Definitions_Tflat",
-        "TSide": "*Debug_Pipe_State_Definitions_Tside",
-        "TCurvedUp": "*Debug_Pipe_State_Definitions_Tcurvedup",
-        "TCurvedDown": "*Debug_Pipe_State_Definitions_Tcurveddown",
-        "XUp": "*Debug_Pipe_State_Definitions_Xup",
-        "XDown": "*Debug_Pipe_State_Definitions_Xdown",
-        "XCurved": "*Debug_Pipe_State_Definitions_Xcurved",
-        "XFlat": "*Debug_Pipe_State_Definitions_Xflat",
-        "XSide": "*Debug_Pipe_State_Definitions_Xside",
-        "XTUp": "*Debug_Pipe_State_Definitions_XTup",
-        "XTDown": "*Debug_Pipe_State_Definitions_XTdown",
-        "XTSide": "*Debug_Pipe_State_Definitions_XTside",
-        "FullyConnected": "*Debug_Pipe_State_Definitions_Fullyconnected"
+        "Disconnected": "Debug_Pipe_300K",
+        "StubUp": "*Debug_Pipe_300K_State_Definitions_Stubup",
+        "StubDown": "*Debug_Pipe_300K_State_Definitions_Stubdown",
+        "StubSide": "*Debug_Pipe_300K_State_Definitions_Stubside",
+        "IFlat": "*Debug_Pipe_300K_State_Definitions_Iflat",
+        "IVert": "*Debug_Pipe_300K_State_Definitions_Ivert",
+        "LUp": "*Debug_Pipe_300K_State_Definitions_Lup",
+        "LDown": "*Debug_Pipe_300K_State_Definitions_Ldown",
+        "LFlat": "*Debug_Pipe_300K_State_Definitions_Lflat",
+        "TUp": "*Debug_Pipe_300K_State_Definitions_Tup",
+        "TDown": "*Debug_Pipe_300K_State_Definitions_Tdown",
+        "TFlat": "*Debug_Pipe_300K_State_Definitions_Tflat",
+        "TSide": "*Debug_Pipe_300K_State_Definitions_Tside",
+        "TCurvedUp": "*Debug_Pipe_300K_State_Definitions_Tcurvedup",
+        "TCurvedDown": "*Debug_Pipe_300K_State_Definitions_Tcurveddown",
+        "XUp": "*Debug_Pipe_300K_State_Definitions_Xup",
+        "XDown": "*Debug_Pipe_300K_State_Definitions_Xdown",
+        "XCurved": "*Debug_Pipe_300K_State_Definitions_Xcurved",
+        "XFlat": "*Debug_Pipe_300K_State_Definitions_Xflat",
+        "XSide": "*Debug_Pipe_300K_State_Definitions_Xside",
+        "XTUp": "*Debug_Pipe_300K_State_Definitions_XTup",
+        "XTDown": "*Debug_Pipe_300K_State_Definitions_XTdown",
+        "XTSide": "*Debug_Pipe_300K_State_Definitions_XTside",
+        "FullyConnected": "*Debug_Pipe_300K_State_Definitions_Fullyconnected"
       }
     }
   },

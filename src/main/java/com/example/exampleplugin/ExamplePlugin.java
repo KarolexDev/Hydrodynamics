@@ -1,6 +1,6 @@
 package com.example.exampleplugin;
 
-import com.example.exampleplugin.component.ThermodynamicEnsembleComponent;
+import com.example.exampleplugin.component.ThermalComponent;
 import com.example.exampleplugin.interaction.ConfigurePipeInteraction;
 import com.example.exampleplugin.system.PipeFlowUpdateSystem;
 import com.hypixel.hytale.component.ComponentType;
@@ -15,7 +15,7 @@ public class ExamplePlugin extends JavaPlugin {
 
     private static ExamplePlugin instance;
 
-    private ComponentType<ChunkStore, ThermodynamicEnsembleComponent> thermodynamicEnsembleComponentType;
+    private ComponentType<ChunkStore, ThermalComponent> thermalComponentType;
 
     public ExamplePlugin(JavaPluginInit init) {
         super(init);
@@ -30,10 +30,8 @@ public class ExamplePlugin extends JavaPlugin {
     @Override
     protected void setup() {
         this.getCommandRegistry().registerCommand(new ExampleCommand(this.getName(), this.getManifest().getVersion().toString()));
-        // this.fluidStorageComponent = this.getChunkStoreRegistry().registerComponent(FluidStorageComponent.class, FluidStorageComponent::new);
-        this.thermodynamicEnsembleComponentType = this.getChunkStoreRegistry().registerComponent(ThermodynamicEnsembleComponent.class, "ThermodynamicEnsembleComponent", ThermodynamicEnsembleComponent.CODEC);
+        this.thermalComponentType = this.getChunkStoreRegistry().registerComponent(ThermalComponent.class, "ThermalComponent", ThermalComponent.CODEC);
 
-        // this.coordinateType = this.getChunkStoreRegistry().
 
         this.getChunkStoreRegistry().registerSystem(new PipeFlowUpdateSystem());
 
@@ -41,7 +39,7 @@ public class ExamplePlugin extends JavaPlugin {
                 .register("ConfigurePipe", ConfigurePipeInteraction.class, ConfigurePipeInteraction.CODEC);
     }
 
-    public ComponentType<ChunkStore, ThermodynamicEnsembleComponent> getThermodynamicEnsembleComponentType() {
-        return this.thermodynamicEnsembleComponentType;
+    public ComponentType<ChunkStore, ThermalComponent> getThermalComponentType() {
+        return this.thermalComponentType;
     }
 }

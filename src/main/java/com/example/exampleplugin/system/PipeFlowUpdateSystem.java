@@ -1,7 +1,7 @@
 package com.example.exampleplugin.system;
 
-import com.example.exampleplugin.component.ThermodynamicEnsembleComponent;
-import com.example.exampleplugin.physics.ThermodynamicsUtil;
+import com.example.exampleplugin.component.ThermalComponent;
+import com.example.exampleplugin.physics.systems.Environment;
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.system.tick.EntityTickingSystem;
@@ -20,8 +20,8 @@ import static com.example.exampleplugin.system.ConnectedPipeUtil.getConnectedPip
 public class PipeFlowUpdateSystem extends EntityTickingSystem<ChunkStore> {
 
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
-    private final ComponentType<ChunkStore, ThermodynamicEnsembleComponent> thermodynamicEnsembleComponentType = ThermodynamicEnsembleComponent.getComponentType();
-    private final Query<ChunkStore> query = Query.and(new Query[]{ThermodynamicEnsembleComponent.getComponentType()});
+    private final ComponentType<ChunkStore, ThermalComponent> thermodynamicEnsembleComponentType = ThermalComponent.getComponentType();
+    private final Query<ChunkStore> query = Query.and(new Query[]{ThermalComponent.getComponentType()});
 
     public PipeFlowUpdateSystem() {
         super();
@@ -30,24 +30,30 @@ public class PipeFlowUpdateSystem extends EntityTickingSystem<ChunkStore> {
     @Override
     public void tick(
             float dt,
-            int index,
+            int archetypeChunkIndex,
             @NonNull ArchetypeChunk<ChunkStore> chunk,
             @NonNull Store<ChunkStore> store,
             @NonNull CommandBuffer<ChunkStore> commandBuffer
     ) {
-        BlockModule.BlockStateInfo stateInfo = chunk.getComponent(index, BlockModule.BlockStateInfo.getComponentType());
+        BlockModule.BlockStateInfo stateInfo = chunk.getComponent(archetypeChunkIndex, BlockModule.BlockStateInfo.getComponentType());
         if (stateInfo == null) { return; }
         WorldChunk wc = commandBuffer.getComponent(stateInfo.getChunkRef(), WorldChunk.getComponentType());
         World world = wc.getWorld();
 
-        int x = ChunkUtil.worldCoordFromLocalCoord(wc.getX(), ChunkUtil.xFromBlockInColumn(index));
-        int y = ChunkUtil.yFromBlockInColumn(index);
-        int z = ChunkUtil.worldCoordFromLocalCoord(wc.getZ(), ChunkUtil.zFromBlockInColumn(index));
+        int blockIndex = stateInfo.getIndex();
 
-        Vector3i originCoords = new Vector3i(x, y, z);
+        int localX = ChunkUtil.xFromBlockInColumn(blockIndex);
+        int localY = ChunkUtil.yFromBlockInColumn(blockIndex);
+        int localZ = ChunkUtil.zFromBlockInColumn(blockIndex);
+
+        int worldX = ChunkUtil.worldCoordFromLocalCoord(wc.getX(), localX);
+        // worldY is the same as localY
+        int worldZ = ChunkUtil.worldCoordFromLocalCoord(wc.getZ(), localZ);
+
+        Vector3i originCoords = new Vector3i(worldX, localY, worldZ);
 
         commandBuffer.run((s) -> {
-            ThermodynamicEnsembleComponent originBlockThermalComponent = store.getComponent(chunk.getReferenceTo(index), ThermodynamicEnsembleComponent.getComponentType());
+            ThermalComponent originBlockThermalComponent = store.getComponent(chunk.getReferenceTo(archetypeChunkIndex), ThermalComponent.getComponentType());
 
             for (ConnectedPipeUtil.ConnectedPipe connectedPipe : getConnectedPipes(originCoords, chunk, commandBuffer, world)) {
                 Vector3i neighborCoords = connectedPipe.position();
@@ -56,19 +62,17 @@ public class PipeFlowUpdateSystem extends EntityTickingSystem<ChunkStore> {
                 }
                 Ref<ChunkStore> connectedPipeRef = connectedPipe.ref();
 
-                ThermodynamicEnsembleComponent neighborBlockThermalComponent = store.getComponent(connectedPipeRef, ThermodynamicEnsembleComponent.getComponentType());
+                ThermalComponent neighborBlockThermalComponent = store.getComponent(connectedPipeRef, ThermalComponent.getComponentType());
 
-                ThermodynamicsUtil.equilibrate(
-                        dt,
-                        originBlockThermalComponent,
-                        neighborBlockThermalComponent
+                originBlockThermalComponent.data.equilibrateWith(
+                        neighborBlockThermalComponent.data,
+                        dt
                 );
             }
-            ThermodynamicsUtil.equilibrate_with_environment(
-                    dt,
-                    originBlockThermalComponent,
-                    300f
-            );
+            // originBlockThermalComponent.data.equilibrateWith(
+            //         new Environment(),  // <-- Can be done better
+            //         dt
+            // );
         });
     }
 

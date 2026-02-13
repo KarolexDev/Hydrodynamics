@@ -1,39 +1,33 @@
 package com.example.exampleplugin.physics.systems;
 
-import com.example.exampleplugin.physics.EquationOfState;
+import com.example.exampleplugin.physics.EntropicSystem;
 
-import static com.example.exampleplugin.physics.ThermodynamicsUtil.DE_BROGLIE_PREFACTOR;
-import static com.example.exampleplugin.physics.ThermodynamicsUtil.GAS_CONSTANT;
+public class IdealGas extends EntropicSystem {
 
-public class IdealGas extends EquationOfState {
-    private final float U0 = 1f;
-    public IdealGas(float entropy, float volume, float molarity) {
-        super(entropy, volume, molarity);
+    private static final float TWO_THIRDS = 2f/3f;
+
+    public IdealGas(float energy, float volume, float particleCount) {
+        super(energy, volume, particleCount);
+    }
+
+    @Override
+    public float getEntropy() {
+        return this.getParticleCount() * GAS_CONSTANT * ((float) Math.log(this.getVolume() / this.getParticleCount()) + 1.5f * (float) Math.log(this.getTemperature()));
     }
 
     @Override
     public float getTemperature() {
-        float result = 2 / (3 * this.molarity * GAS_CONSTANT) * this.getInnerEnergy();
-        System.out.println("CALCULATED TEMPERATURE:\t" + result);
-        return result;
+        return TWO_THIRDS * this.getEnergy() / (this.getParticleCount() * GAS_CONSTANT);
     }
 
     @Override
     public float getPressure() {
-        return this.molarity * this.getTemperature() / this.volume;
+        return TWO_THIRDS * this.getEnergy() / this.getVolume();
     }
 
     @Override
-    protected float getInnerEnergy() {
-        float result = (float) (this.U0 * this.molarity * Math.exp(2 * this.entropy / (3 * this.molarity * GAS_CONSTANT)) * Math.pow(this.volume, (double) -2 /3));
-        System.out.println("CALCULATED INNER ENERGY:\t" + result);
-        return result;
-    }
-
-    public static float toEntropy(float temperature, float volume, float molarity) {
-        float deBroglie = DE_BROGLIE_PREFACTOR / ((float) Math.sqrt(temperature));
-        float result = (float) (molarity * GAS_CONSTANT * ((float) Math.log(volume / (molarity * Math.pow(deBroglie, 3))))); // + 2.5 * GAS_CONSTANT * molarity);
-        System.out.println("CALCULATED ENTROPY:\t" + result);
-        return result;
+    public float getChemicalPotential() {
+        float lambda = PLANCKS_CONSTANT / (float) Math.sqrt(2 * Math.PI * MEAN_ATMOSPHERIC_PARTICLE_MASS * BOLTZMANN_CONSTANT * this.getTemperature());
+        return (float) (GAS_CONSTANT * Math.log(this.getParticleCount() / this.getVolume() * Math.pow(lambda, 3)) * this.getTemperature());
     }
 }
