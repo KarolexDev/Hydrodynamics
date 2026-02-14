@@ -44,25 +44,30 @@ public abstract class EntropicSystem {
 
     public <T extends EntropicSystem> EntropicSystem equilibrateWith(T otherSystem, float dt) {
 
-        float alpha = 0.01f;
+        float alpha = 0.5f;
 
-        float L_NN = 1f;
-        float L_UU = 1000f;
+        float L_NN = 100f;  // These values work well
+        float L_UU = 1e7f;
         float L_UN =  alpha * (float) Math.sqrt(L_UU * L_NN);
         float L_NU = L_UN;
-        // float L_UN = 2.5f * GAS_CONSTANT * 0.5f * (this.getTemperature() + otherSystem.getTemperature()) * .1f;
 
-        // float dMuOverT = this.getChemicalPotential()/this.getTemperature() - otherSystem.getChemicalPotential()/otherSystem.getTemperature();
-        float dMuOverT = this.getPressure() - otherSystem.getPressure();
+        float dMuOverT = this.getPressure()/this.getTemperature() - otherSystem.getPressure()/otherSystem.getTemperature();
         float dInvT = 1/this.getTemperature() - 1/otherSystem.getTemperature();
-
-        float Tstar = 0.5f * (this.getTemperature() + otherSystem.getTemperature());
-        float h = 2.5f * GAS_CONSTANT * Tstar;
 
         if (dt > 0.01f) { dt = 0.01f; }
 
         float dN = - L_NN * dMuOverT * dt + L_NU * dInvT * dt;
-        float dU = - L_UU * dInvT * dt + L_UN * dMuOverT * dt;
+        float dU = L_UU * dInvT * dt - L_UN * dMuOverT * dt;
+
+        float U1 = this.getEnergy();
+        if (U1 <= dU) { dU = U1; }
+        float U2 = otherSystem.getEnergy();
+        if (U2 <= dU) { dU = U2; }
+
+        float N1 = this.getParticleCount();
+        if (N1 <= dN) { dN = N1; }
+        float N2 = otherSystem.getParticleCount();
+        if (N2 <= dN) { dN = N2; }
 
         otherSystem.addEnergy(-dU).addParticles(-dN);
         return this.addEnergy(dU).addParticles(dN);
