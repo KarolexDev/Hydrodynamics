@@ -34,7 +34,7 @@ public final class ConnectedPipeUtil {
             Ref<ChunkStore> neighborRef = getBlockComponentEntityRef(world, neighborPos);
 
             if (neighborRef == null) {
-                continue;   // ALWAYS TRUE?? WHY???
+                continue;
             }
 
             result.add(new ConnectedPipe(neighborPos, neighborRef));
