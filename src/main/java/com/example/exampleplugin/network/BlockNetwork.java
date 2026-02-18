@@ -16,6 +16,12 @@ import static com.example.exampleplugin.network.NetworkUtil.getAdjacent;
  * be simple pass-through segments are stored as edge intermediate blocks rather
  * than nodes, keeping the node/edge count low regardless of cable length.
  *
+ * <p>Every {@link Node} carries exactly one component, and every {@link Edge}
+ * carries exactly one component. The {@code componentMap} maps <em>every</em>
+ * block position to the component of the graph element it belongs to:
+ * node-block positions point to the node's component, and intermediate edge
+ * block positions point to the edge's component.
+ *
  * <p>Subclasses must implement {@link #isAlwaysNode} and {@link #isExtendableNode},
  * and may override the hook methods to react to structural changes.
  *
@@ -25,7 +31,7 @@ import static com.example.exampleplugin.network.NetworkUtil.getAdjacent;
  *
  * @param <T> the component type stored at each block position
  */
-public abstract class BlockNetwork<T> {
+public abstract class BlockNetwork<T extends NetworkComponent> {
 
     // -------------------------------------------------------------------------
     // Inner classes
@@ -36,24 +42,24 @@ public abstract class BlockNetwork<T> {
      *
      * <p>A node is created for any block that satisfies {@link #isAlwaysNode},
      * or whose connection count is not exactly 2 (i.e. endpoints and junctions).
-     * Multi-block nodes (e.g. tanks) share a single Node instance.
+     * Multi-block nodes (e.g. tanks) share a single Node instance and a single
+     * component.
      */
     public class Node {
+
+        private T component;
 
         private final Set<Vector3i> blockPositions = new LinkedHashSet<>();
         private final Set<Edge> connectedEdges = new LinkedHashSet<>();
 
-        Node(Set<Vector3i> blockPositions) {
+        Node(Set<Vector3i> blockPositions, T component) {
             this.blockPositions.addAll(blockPositions);
+            this.component = component;
         }
 
-        public Set<Vector3i> getBlockPositions() {
-            return Collections.unmodifiableSet(blockPositions);
-        }
-
-        public Set<Edge> getConnectedEdges() {
-            return Collections.unmodifiableSet(connectedEdges);
-        }
+        public T getComponent() { return component; }
+        public Set<Vector3i> getBlockPositions() { return Collections.unmodifiableSet(blockPositions); }
+        public Set<Edge> getConnectedEdges() { return Collections.unmodifiableSet(connectedEdges); }
 
         /**
          * Returns the set of block positions immediately adjacent to this node
@@ -64,8 +70,6 @@ public abstract class BlockNetwork<T> {
             Set<Vector3i> result = new HashSet<>();
             for (Edge edge : connectedEdges) {
                 if (this == edge.start) {
-                    // Direct link: no intermediate blocks; the adjacent position is
-                    // the opposite node's startPos/endPos recorded on the edge.
                     if (edge.intermediateBlocks.isEmpty()) {
                         result.add(edge.endPos);
                     } else {
@@ -87,13 +91,8 @@ public abstract class BlockNetwork<T> {
         }
 
         /** Number of edges connected to this node. */
-        public int getDegree() {
-            return connectedEdges.size();
-        }
-
-        public BlockNetwork<T> getNetwork() {
-            return BlockNetwork.this;
-        }
+        public int getDegree() { return connectedEdges.size(); }
+        public BlockNetwork<T> getNetwork() { return BlockNetwork.this; }
 
         @Override
         public String toString() {
@@ -114,6 +113,8 @@ public abstract class BlockNetwork<T> {
      */
     public class Edge {
 
+        private T component;
+
         private Node start;
         private Node end;
 
@@ -126,14 +127,16 @@ public abstract class BlockNetwork<T> {
         private final List<Vector3i> intermediateBlocks;
 
         Edge(Node start, Node end, Vector3i startPos, Vector3i endPos,
-             List<Vector3i> intermediateBlocks) {
+             List<Vector3i> intermediateBlocks, T component) {
             this.start = start;
             this.end = end;
             this.startPos = startPos;
             this.endPos = endPos;
             this.intermediateBlocks = List.copyOf(intermediateBlocks);
+            this.component = component;
         }
 
+        public T getComponent() { return component; }
         public Node getStart() { return start; }
         public Node getEnd()   { return end; }
 
@@ -151,9 +154,7 @@ public abstract class BlockNetwork<T> {
         }
 
         /** Intermediate blocks only — does not include the endpoint node positions. */
-        public List<Vector3i> getIntermediateBlocks() {
-            return intermediateBlocks;
-        }
+        public List<Vector3i> getIntermediateBlocks() { return intermediateBlocks; }
 
         /**
          * Returns the two positions adjacent to {@code pos} within this edge.
@@ -170,6 +171,8 @@ public abstract class BlockNetwork<T> {
                 result.add(startPos);
                 if (intermediateBlocks.size() > 1) {
                     result.add(intermediateBlocks.get(1));
+                } else {
+                    result.add(endPos);
                 }
             } else if (index == intermediateBlocks.size() - 1) {
                 result.add(intermediateBlocks.get(index - 1));
@@ -182,13 +185,8 @@ public abstract class BlockNetwork<T> {
         }
 
         /** Number of block-to-block segments in the edge (intermediate blocks + 1). */
-        public int getLength() {
-            return intermediateBlocks.size() + 1;
-        }
-
-        public BlockNetwork<T> getNetwork() {
-            return BlockNetwork.this;
-        }
+        public int getLength() { return intermediateBlocks.size() + 1; }
+        public BlockNetwork<T> getNetwork() { return BlockNetwork.this; }
 
         @Override
         public String toString() {
@@ -205,7 +203,13 @@ public abstract class BlockNetwork<T> {
 
     private final int networkId;
 
-    /** All component blocks that belong to this network, keyed by position. */
+    /**
+     * Maps every block position to the component of its owning graph element:
+     * <ul>
+     *   <li>Node block positions → the node's component</li>
+     *   <li>Intermediate edge block positions → the edge's component</li>
+     * </ul>
+     */
     private final Map<Vector3i, T> componentMap = new LinkedHashMap<>();
 
     /** Maps every block position of a node to its Node object. */
@@ -221,9 +225,7 @@ public abstract class BlockNetwork<T> {
     // Constructor
     // -------------------------------------------------------------------------
 
-    public BlockNetwork() {
-        this.networkId = ID_GEN.getAndIncrement();
-    }
+    public BlockNetwork() { this.networkId = ID_GEN.getAndIncrement(); }
 
     // -------------------------------------------------------------------------
     // Abstract / overridable hooks
@@ -273,17 +275,11 @@ public abstract class BlockNetwork<T> {
 
     public boolean contains(Vector3i pos) { return componentMap.containsKey(pos); }
 
-    public Set<Vector3i> getPositions() {
-        return Collections.unmodifiableSet(componentMap.keySet());
-    }
+    public Set<Vector3i> getPositions() { return Collections.unmodifiableSet(componentMap.keySet()); }
 
-    public Collection<Node> getNodes() {
-        return Collections.unmodifiableCollection(nodeMap.values());
-    }
+    public Collection<Node> getNodes() { return Collections.unmodifiableCollection(nodeMap.values()); }
 
-    public Set<Edge> getEdges() {
-        return Collections.unmodifiableSet(edges);
-    }
+    public Set<Edge> getEdges() { return Collections.unmodifiableSet(edges); }
 
     /** @return the Node at {@code pos}, or {@code null} if none. */
     public @Nullable Node getNodeAt(Vector3i pos) { return nodeMap.get(pos); }
@@ -293,13 +289,30 @@ public abstract class BlockNetwork<T> {
 
     public boolean isNode(Vector3i pos) { return nodeMap.containsKey(pos); }
 
+    /**
+     * Returns the component at {@code pos}, which is the component of the
+     * node or edge that owns this position.
+     */
+    public @Nullable T getComponentAt(Vector3i pos) { return componentMap.get(pos); }
+
     // -------------------------------------------------------------------------
     // Package-private component management
     // -------------------------------------------------------------------------
 
+    /**
+     * Registers an external component for {@code pos} in the componentMap.
+     * Used during network construction before the graph is built.
+     * After the graph is built, components are managed via node/edge registration.
+     */
     void addComponent(Vector3i pos, T component) { componentMap.put(pos, component); }
 
     void addAllComponents(Map<Vector3i, T> components) { componentMap.putAll(components); }
+
+    /**
+     * Returns a read-only view of the raw componentMap.
+     * Used by {@link BlockNetworkManager} when merging networks.
+     */
+    Map<Vector3i, T> getRawComponentMap() { return Collections.unmodifiableMap(componentMap); }
 
     // -------------------------------------------------------------------------
     // Graph queries
@@ -308,9 +321,6 @@ public abstract class BlockNetwork<T> {
     /**
      * Returns the network neighbors of {@code pos} using the pre-built graph
      * (fast). Requires the graph to be up to date.
-     *
-     * <p>Note: for multi-block nodes this does not return positions within the
-     * same node — only positions across edges.
      */
     Set<Vector3i> getNetworkNeighbors(Vector3i pos) {
         if (isNode(pos)) {
@@ -338,8 +348,6 @@ public abstract class BlockNetwork<T> {
 
     /**
      * Returns {@code true} if {@code pos} should be represented as a node.
-     * A position is a node if it is always-a-node, or if it does not have
-     * exactly 2 network neighbors (0–1 → endpoint, 3+ → junction).
      */
     private boolean shouldBeNode(Vector3i pos) {
         if (isAlwaysNode(pos)) return true;
@@ -353,8 +361,10 @@ public abstract class BlockNetwork<T> {
     /**
      * Merges {@code node2} into {@code node1}. All edges and block positions of
      * {@code node2} are transferred to {@code node1}, and {@code node2}'s entries
-     * are removed from the node map.
+     * are removed from the node map. The merged node's component is the combination
+     * of both nodes' components.
      */
+    @SuppressWarnings("unchecked")
     void mergeNodes(Node node1, Node node2) {
         for (Edge edge : node2.connectedEdges) {
             if (node2 == edge.start) edge.start = node1;
@@ -363,16 +373,25 @@ public abstract class BlockNetwork<T> {
         node1.connectedEdges.addAll(node2.connectedEdges);
 
         for (Vector3i pos : node2.blockPositions) {
-            nodeMap.remove(pos);
             nodeMap.put(pos, node1);
+            // Update componentMap: these positions now point to node1's merged component
         }
         node1.blockPositions.addAll(node2.blockPositions);
+
+        // Merge the components
+        node1.component = (T) node1.component.add(node2.component);
+
+        // Update componentMap for all positions in the merged node
+        for (Vector3i pos : node1.blockPositions) {
+            componentMap.put(pos, node1.component);
+        }
     }
 
     /**
      * Collapses a degree-2, non-always-node into the edge formed by its two
      * neighbours, merging the two edges on either side into one.
      */
+    @SuppressWarnings("unchecked")
     private void removeRedundantNode(Node node) {
         if (node == null) return;
         if (isAlwaysNode(node.blockPositions.iterator().next())) return;
@@ -384,6 +403,9 @@ public abstract class BlockNetwork<T> {
 
         Node a = e1.getOpposite(node);
         Node b = e2.getOpposite(node);
+
+        // Merged component: e1 + node + e2
+        T mergedComponent = (T) e1.component.add(node.component).add(e2.component);
 
         // Build the merged intermediate path: e1-blocks + node-position + e2-blocks,
         // oriented so it runs from a to b.
@@ -412,13 +434,14 @@ public abstract class BlockNetwork<T> {
 
         for (Vector3i pos : node.blockPositions) {
             nodeMap.remove(pos);
+            componentMap.remove(pos);
         }
 
         // Derive startPos/endPos from the edges' orientation relative to a and b.
         Vector3i mergedStartPos = (e1.getStart() == a) ? e1.startPos : e1.endPos;
         Vector3i mergedEndPos   = (e2.getEnd()   == b) ? e2.endPos   : e2.startPos;
 
-        registerEdge(new Edge(a, b, mergedStartPos, mergedEndPos, mergedPath));
+        registerEdge(new Edge(a, b, mergedStartPos, mergedEndPos, mergedPath, mergedComponent));
     }
 
     /**
@@ -426,9 +449,14 @@ public abstract class BlockNetwork<T> {
      * The original edge is replaced by two shorter edges on either side of the
      * new node.
      *
+     * <p>The edge's component is partitioned proportionally between the two
+     * new edges. The new node at {@code position} receives a
+     * {@code fromLength(1)} component.
+     *
      * @throws IllegalArgumentException if {@code position} is not an intermediate
      *     block of {@code edge}
      */
+    @SuppressWarnings("unchecked")
     void splitEdge(Edge edge, Vector3i position) {
         if (edge == null) return;
 
@@ -443,6 +471,25 @@ public abstract class BlockNetwork<T> {
         Node startNode = edge.getStart();
         Node endNode   = edge.getEnd();
 
+        // The new node at `position` gets a single-block component.
+        T nodeComponent = (T) edge.component.fromLength(1);
+
+        // Partition the remaining edge component between the two sides.
+        // Left side: blocks[0..index-1]  → size = index
+        // Right side: blocks[index+1..end] → size = blocks.size() - index - 1
+        int leftSize  = index;           // number of intermediate blocks in first edge
+        int rightSize = blocks.size() - index - 1; // number of intermediate blocks in second edge
+
+        // We subtract the node component from the edge component first, then split.
+        T remainingComponent = (T) edge.component.del(nodeComponent);
+
+        NetworkUtil.Pair<T, T> split = remainingComponent.partition(
+                Math.max(leftSize, 1),
+                Math.max(rightSize, 1)
+        );
+        T firstEdgeComponent  = split.left;
+        T secondEdgeComponent = split.right;
+
         List<Vector3i> firstPath  = (index == 0)
                 ? Collections.emptyList()
                 : new ArrayList<>(blocks.subList(0, index));
@@ -452,11 +499,12 @@ public abstract class BlockNetwork<T> {
 
         deregisterEdge(edge);
 
-        Node newNode = new Node(Set.of(position));
+        Node newNode = new Node(Set.of(position), nodeComponent);
         nodeMap.put(position, newNode);
+        componentMap.put(position, nodeComponent);
 
-        registerEdge(new Edge(startNode, newNode, edge.startPos, position, firstPath));
-        registerEdge(new Edge(newNode, endNode,   position, edge.endPos,   secondPath));
+        registerEdge(new Edge(startNode, newNode, edge.startPos, position, firstPath, firstEdgeComponent));
+        registerEdge(new Edge(newNode, endNode, position, edge.endPos, secondPath, secondEdgeComponent));
     }
 
     // -------------------------------------------------------------------------
@@ -465,24 +513,26 @@ public abstract class BlockNetwork<T> {
 
     /**
      * Rebuilds the entire node/edge graph from the current component map.
-     * Should only be called on network instantiation; for incremental changes
-     * use {@link #addBlock} / {@link #removeBlock}.
+     * Should only be called on network instantiation or after bulk changes;
+     * for incremental changes use {@link #addBlock} / {@link #removeBlock}.
      *
      * <p>TODO: Extend to handle multi-block nodes correctly.
      */
+    @SuppressWarnings("unchecked")
     void rebuildGraph() {
         nodeMap.clear();
         edgeBlockMap.clear();
         edges.clear();
 
+        // First pass: create nodes for all positions that should be nodes.
         for (Vector3i pos : componentMap.keySet()) {
             if (shouldBeNode(pos)) {
-                nodeMap.put(pos, new Node(Set.of(pos)));
+                nodeMap.put(pos, new Node(Set.of(pos), componentMap.get(pos)));
             }
         }
 
-        Set<Vector3i>         visitedIntermediate = new HashSet<>();
-        Set<Set<Vector3i>>    visitedDirectLinks  = new HashSet<>();
+        Set<Vector3i>      visitedIntermediate = new HashSet<>();
+        Set<Set<Vector3i>> visitedDirectLinks  = new HashSet<>();
 
         for (Node node : new ArrayList<>(nodeMap.values())) {
             for (Vector3i pos : node.blockPositions) {
@@ -493,31 +543,31 @@ public abstract class BlockNetwork<T> {
                         if (neighborNode == node) continue;
 
                         if (isExtendableNode(pos) && isExtendableNode(neighbor)) {
-                            // Adjacent extendable blocks → merge into one node.
                             mergeNodes(node, neighborNode);
                         } else {
-                            // Direct node-to-node link — record each pair once.
                             Set<Vector3i> key = Set.of(pos, neighbor);
                             if (visitedDirectLinks.contains(key)) continue;
                             visitedDirectLinks.add(key);
 
+                            // Direct node-to-node edge: no intermediate blocks, so
+                            // we create a fromLength(0) component for the edge itself.
+                            T edgeComponent = (T) node.component.fromLength(0);
                             registerEdge(new Edge(
                                     node, neighborNode, pos, neighbor,
-                                    Collections.emptyList()
+                                    Collections.emptyList(),
+                                    edgeComponent
                             ));
                         }
                         continue;
                     }
 
                     // Neighbor is an intermediate block — trace the path until
-                    // another node is reached. Junctions are always nodes
-                    // (shouldBeNode returns true for degree != 2), so the linear
-                    // walk below is safe.
+                    // another node is reached.
                     if (visitedIntermediate.contains(neighbor)) continue;
 
-                    List<Vector3i> path     = new ArrayList<>();
-                    Vector3i current        = neighbor;
-                    Vector3i previous       = pos;
+                    List<Vector3i> path    = new ArrayList<>();
+                    Vector3i current       = neighbor;
+                    Vector3i previous      = pos;
 
                     while (current != null && !nodeMap.containsKey(current)) {
                         path.add(current);
@@ -532,8 +582,16 @@ public abstract class BlockNetwork<T> {
                     }
 
                     if (current != null && nodeMap.containsKey(current)) {
+                        // Build edge component from intermediate block components.
+                        // Start with the component of the first intermediate block,
+                        // then add the rest.
+                        T edgeComponent = componentMap.get(path.getFirst());
+                        for (int i = 1; i < path.size(); i++) {
+                            edgeComponent = (T) edgeComponent.add(componentMap.get(path.get(i)));
+                        }
+
                         registerEdge(new Edge(
-                                node, nodeMap.get(current), pos, current, path
+                                node, nodeMap.get(current), pos, current, path, edgeComponent
                         ));
                     }
                 }
@@ -550,12 +608,13 @@ public abstract class BlockNetwork<T> {
     /**
      * Adds a block to the network and updates the graph incrementally.
      */
+    @SuppressWarnings("unchecked")
     void addBlock(Vector3i pos, T component) {
         componentMap.put(pos, component);
 
         if (shouldBeNode(pos)) {
 
-            Node node = new Node(Set.of(pos));
+            Node node = new Node(Set.of(pos), component);
             nodeMap.put(pos, node);
 
             for (Vector3i neighbor : calculateNetworkNeighbors(pos)) {
@@ -566,23 +625,27 @@ public abstract class BlockNetwork<T> {
                     if (isExtendableNode(pos) && isExtendableNode(neighbor)) {
                         mergeNodes(node, neighborNode);
                     } else {
+                        // Direct node-to-node edge with a zero-length edge component.
+                        T edgeComponent = (T) component.fromLength(0);
                         registerEdge(new Edge(
                                 node, neighborNode, pos, neighbor,
-                                Collections.emptyList()
+                                Collections.emptyList(),
+                                edgeComponent
                         ));
-                        // The neighbor may no longer be a junction after this connection.
                         if (!shouldBeNode(neighbor)) {
                             removeRedundantNode(neighborNode);
                         }
                     }
 
                 } else {
-                    // Neighbor is an intermediate block — split its edge to create
-                    // a node there, then connect the new node to pos.
+                    // Neighbor is an intermediate block — split its edge.
                     splitEdge(getEdgeAt(neighbor), neighbor);
+                    // After splitting, neighbor is now a node; connect to it.
+                    T edgeComponent = (T) component.fromLength(0);
                     registerEdge(new Edge(
                             node, getNodeAt(neighbor), pos, neighbor,
-                            Collections.emptyList()
+                            Collections.emptyList(),
+                            edgeComponent
                     ));
                 }
             }
@@ -606,21 +669,21 @@ public abstract class BlockNetwork<T> {
             boolean n2IsNode = isNode(n2);
 
             if (n1IsNode && n2IsNode) {
-                // Both neighbors are nodes → simple bridging edge.
+                // Both neighbors are nodes → simple bridging edge with pos as intermediate.
                 registerEdge(new Edge(
-                        getNodeAt(n1), getNodeAt(n2), n1, n2, List.of(pos)
+                        getNodeAt(n1), getNodeAt(n2), n1, n2, List.of(pos), component
                 ));
 
             } else if (n1IsNode ^ n2IsNode) {
-                // One node, one edge → split the edge, then bridge.
-                Vector3i nodePos  = n1IsNode ? n1 : n2;
-                Vector3i edgePos  = n1IsNode ? n2 : n1;
+                // One node, one edge → split the edge side, then bridge.
+                Vector3i nodePos = n1IsNode ? n1 : n2;
+                Vector3i edgePos = n1IsNode ? n2 : n1;
 
                 splitEdge(getEdgeAt(edgePos), edgePos);
 
                 registerEdge(new Edge(
                         getNodeAt(nodePos), getNodeAt(edgePos),
-                        nodePos, edgePos, List.of(pos)
+                        nodePos, edgePos, List.of(pos), component
                 ));
 
             } else {
@@ -629,9 +692,6 @@ public abstract class BlockNetwork<T> {
                 Edge e2 = getEdgeAt(n2);
 
                 if (e1 == e2) {
-                    // n1 and n2 are on the same edge (e.g. closing a loop).
-                    // Split at n1 first, then re-fetch the edge containing n2
-                    // (it will be a different Edge object after the split).
                     splitEdge(e1, n1);
                     splitEdge(getEdgeAt(n2), n2);
                 } else {
@@ -640,7 +700,7 @@ public abstract class BlockNetwork<T> {
                 }
 
                 registerEdge(new Edge(
-                        getNodeAt(n1), getNodeAt(n2), n1, n2, List.of(pos)
+                        getNodeAt(n1), getNodeAt(n2), n1, n2, List.of(pos), component
                 ));
             }
         }
@@ -651,8 +711,8 @@ public abstract class BlockNetwork<T> {
 
     /**
      * Removes a block from the network and updates the graph incrementally.
-     * This is the inverse of {@link #addBlock}.
      */
+    @SuppressWarnings("unchecked")
     void removeBlock(Vector3i pos) {
         if (!componentMap.containsKey(pos)) return;
 
@@ -665,13 +725,18 @@ public abstract class BlockNetwork<T> {
                 node.blockPositions.remove(pos);
                 nodeMap.remove(pos);
                 componentMap.remove(pos);
+                // Update the node's component to reflect the removed block.
+                node.component = (T) node.component.del(componentMap.get(pos));
+                // Re-sync componentMap for remaining node positions.
+                for (Vector3i p : node.blockPositions) {
+                    componentMap.put(p, node.component);
+                }
                 onBlockRemoved();
                 onGraphUpdated();
                 return;
             }
 
-            // Collect neighbor nodes before tearing down, so we can check
-            // redundancy after the edges are removed.
+            // Collect neighbor nodes before tearing down.
             Set<Node> formerNeighbors = new HashSet<>();
             for (Edge edge : node.connectedEdges) {
                 formerNeighbors.add(edge.getOpposite(node));
@@ -686,32 +751,46 @@ public abstract class BlockNetwork<T> {
                     continue;
                 }
 
-                // The intermediate path is severed on the pos-side. The block
-                // adjacent to pos becomes a new degree-1 node (dead end), and
-                // the rest of the path becomes a new edge to the opposite node.
                 Node oppositeNode = edge.getOpposite(node);
-                Vector3i orphanEnd;
-                List<Vector3i> remainingPath;
 
                 if (edge.getStart() == node) {
-                    orphanEnd     = path.getFirst();
-                    remainingPath = path.size() > 1
+                    Vector3i orphanEnd = path.getFirst();
+                    List<Vector3i> remainingPath = path.size() > 1
                             ? new ArrayList<>(path.subList(1, path.size()))
                             : Collections.emptyList();
-                    Node orphanNode = new Node(Set.of(orphanEnd));
+
+                    // Orphan node component: fromLength(1); remaining edge component: del first block.
+                    T orphanNodeComp = (T) edge.component.fromLength(1);
+                    T remainingEdgeComp = remainingPath.isEmpty()
+                            ? (T) edge.component.fromLength(0)
+                            : (T) edge.component.del(orphanNodeComp);
+
+                    Node orphanNode = new Node(Set.of(orphanEnd), orphanNodeComp);
                     nodeMap.put(orphanEnd, orphanNode);
+                    componentMap.put(orphanEnd, orphanNodeComp);
+
                     registerEdge(new Edge(
-                            orphanNode, oppositeNode, orphanEnd, edge.endPos, remainingPath
+                            orphanNode, oppositeNode, orphanEnd, edge.endPos,
+                            remainingPath, remainingEdgeComp
                     ));
                 } else {
-                    orphanEnd     = path.getLast();
-                    remainingPath = path.size() > 1
+                    Vector3i orphanEnd = path.getLast();
+                    List<Vector3i> remainingPath = path.size() > 1
                             ? new ArrayList<>(path.subList(0, path.size() - 1))
                             : Collections.emptyList();
-                    Node orphanNode = new Node(Set.of(orphanEnd));
+
+                    T orphanNodeComp = (T) edge.component.fromLength(1);
+                    T remainingEdgeComp = remainingPath.isEmpty()
+                            ? (T) edge.component.fromLength(0)
+                            : (T) edge.component.del(orphanNodeComp);
+
+                    Node orphanNode = new Node(Set.of(orphanEnd), orphanNodeComp);
                     nodeMap.put(orphanEnd, orphanNode);
+                    componentMap.put(orphanEnd, orphanNodeComp);
+
                     registerEdge(new Edge(
-                            oppositeNode, orphanNode, edge.startPos, orphanEnd, remainingPath
+                            oppositeNode, orphanNode, edge.startPos, orphanEnd,
+                            remainingPath, remainingEdgeComp
                     ));
                 }
             }
@@ -719,7 +798,6 @@ public abstract class BlockNetwork<T> {
             nodeMap.remove(pos);
             componentMap.remove(pos);
 
-            // A former neighbor with degree 2 may now be redundant.
             for (Node neighbor : formerNeighbors) {
                 if (neighbor.getDegree() == 2
                         && !isAlwaysNode(neighbor.blockPositions.iterator().next())) {
@@ -731,7 +809,6 @@ public abstract class BlockNetwork<T> {
 
             Edge edge = edgeBlockMap.get(pos);
             if (edge == null) {
-                // Disconnected block — nothing to unlink from the graph.
                 componentMap.remove(pos);
                 onBlockRemoved();
                 onGraphUpdated();
@@ -751,38 +828,71 @@ public abstract class BlockNetwork<T> {
             Node startNode = edge.getStart();
             Node endNode   = edge.getEnd();
 
+            // Remove the removed block's contribution from the edge component.
+            T removedBlockComp = (T) edge.component.fromLength(1);
+            T remainingComp    = (T) edge.component.del(removedBlockComp);
+
+            // Split remaining component proportionally.
+            int leftSize  = firstPath.size();
+            int rightSize = secondPath.size();
+            T firstEdgeComp;
+            T secondEdgeComp;
+            if (leftSize == 0 && rightSize == 0) {
+                firstEdgeComp  = (T) edge.component.fromLength(0);
+                secondEdgeComp = (T) edge.component.fromLength(0);
+            } else if (leftSize == 0) {
+                firstEdgeComp  = (T) edge.component.fromLength(0);
+                secondEdgeComp = remainingComp;
+            } else if (rightSize == 0) {
+                firstEdgeComp  = remainingComp;
+                secondEdgeComp = (T) edge.component.fromLength(0);
+            } else {
+                NetworkUtil.Pair<T, T> split = remainingComp.partition(leftSize, rightSize);
+                firstEdgeComp  = split.left;
+                secondEdgeComp = split.right;
+            }
+
             deregisterEdge(edge);
             componentMap.remove(pos);
 
             // First half: startNode → gap.
-            // If non-empty, the tip block (adjacent to the gap) becomes a new
-            // degree-1 node; the remaining blocks form a new edge to startNode.
             if (!firstPath.isEmpty()) {
                 Vector3i tip = firstPath.getLast();
-                Node tipNode = new Node(Set.of(tip));
+                T tipNodeComp = (T) firstEdgeComp.fromLength(1);
+                T tipEdgeComp = firstPath.size() > 1
+                        ? (T) firstEdgeComp.del(tipNodeComp)
+                        : (T) firstEdgeComp.fromLength(0);
+
+                Node tipNode = new Node(Set.of(tip), tipNodeComp);
                 nodeMap.put(tip, tipNode);
+                componentMap.put(tip, tipNodeComp);
 
                 List<Vector3i> innerPath = firstPath.size() > 1
                         ? new ArrayList<>(firstPath.subList(0, firstPath.size() - 1))
                         : Collections.emptyList();
 
-                registerEdge(new Edge(startNode, tipNode, edge.startPos, tip, innerPath));
+                registerEdge(new Edge(startNode, tipNode, edge.startPos, tip, innerPath, tipEdgeComp));
             }
 
             // Second half: gap → endNode.
             if (!secondPath.isEmpty()) {
                 Vector3i tip = secondPath.getFirst();
-                Node tipNode = new Node(Set.of(tip));
+                T tipNodeComp = (T) secondEdgeComp.fromLength(1);
+                T tipEdgeComp = secondPath.size() > 1
+                        ? (T) secondEdgeComp.del(tipNodeComp)
+                        : (T) secondEdgeComp.fromLength(0);
+
+                Node tipNode = new Node(Set.of(tip), tipNodeComp);
                 nodeMap.put(tip, tipNode);
+                componentMap.put(tip, tipNodeComp);
 
                 List<Vector3i> innerPath = secondPath.size() > 1
                         ? new ArrayList<>(secondPath.subList(1, secondPath.size()))
                         : Collections.emptyList();
 
-                registerEdge(new Edge(tipNode, endNode, tip, edge.endPos, innerPath));
+                registerEdge(new Edge(tipNode, endNode, tip, edge.endPos, innerPath, tipEdgeComp));
             }
 
-            // Either endpoint may have become redundant (degree 2, not always-node).
             for (Node endpoint : List.of(startNode, endNode)) {
                 if (endpoint.getDegree() == 2
                         && !isAlwaysNode(endpoint.blockPositions.iterator().next())) {
@@ -805,6 +915,7 @@ public abstract class BlockNetwork<T> {
         edge.end.connectedEdges.add(edge);
         for (Vector3i pos : edge.intermediateBlocks) {
             edgeBlockMap.put(pos, edge);
+            componentMap.put(pos, edge.component);
         }
     }
 
@@ -813,7 +924,8 @@ public abstract class BlockNetwork<T> {
         edge.start.connectedEdges.remove(edge);
         edge.end.connectedEdges.remove(edge);
         for (Vector3i pos : edge.intermediateBlocks) {
-            edgeBlockMap.remove(pos, edge);
+            edgeBlockMap.remove(pos);
+            componentMap.remove(pos);
         }
     }
 

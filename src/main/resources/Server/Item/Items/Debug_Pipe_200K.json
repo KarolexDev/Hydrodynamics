@@ -36,10 +36,8 @@
   "BlockType": {
     "BlockEntity": {
       "Components": {
-        "ThermalComponent": {
-          "Energy": 100,
-          "Volume": 64,
-          "ParticleCount": 33
+        "ExampleComponent": {
+          "ExampleValue": 67
         }
       }
     },

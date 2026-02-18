@@ -50,4 +50,14 @@ public class NetworkUtil {
         int dz = Math.abs(a.z - b.z);
         return (dx + dy + dz) == 1;
     }
+
+    public static class Pair<T, N> {
+        T left;
+        N right;
+
+        public Pair(T val1, N val2) {
+            this.left = val1;
+            this.right = val2;
+        }
+    }
 }

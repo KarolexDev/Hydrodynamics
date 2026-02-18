@@ -10,6 +10,13 @@
   "PlayerAnimationsId": "Block",
   "Set": "Soil",
   "BlockType": {
+    "BlockEntity": {
+      "Components": {
+        "ExampleComponent": {
+          "ExampleValue": 67
+        }
+      }
+    },
     "Material": "Solid",
     "DrawType": "Cube",
     "Group": "Dirt",
