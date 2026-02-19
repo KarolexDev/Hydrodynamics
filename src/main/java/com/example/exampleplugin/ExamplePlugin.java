@@ -13,10 +13,15 @@ import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
 public class ExamplePlugin extends JavaPlugin {
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
 
     private static ExamplePlugin instance;
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     private ComponentType<ChunkStore, ExampleComponent> exampleComponentType;
 
@@ -43,6 +48,7 @@ public class ExamplePlugin extends JavaPlugin {
         // this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkAddedSystem());
         // this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkTickingSystem());
         this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockPlaceEventSystem());
+        this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockBreakEventSystem());
 
         this.getCodecRegistry(Interaction.CODEC)
                 .register("ConfigurePipe", ConfigurePipeInteraction.class, ConfigurePipeInteraction.CODEC);
@@ -53,4 +59,6 @@ public class ExamplePlugin extends JavaPlugin {
     public ComponentType<ChunkStore, ExampleComponent> getExampleComponentType() { return this.exampleComponentType; }
 
     public ResourceType<EntityStore, ExampleNetwork> getExampleNetworkResourceType() { return this.exampleNetworkResourceType; }
+
+    public ScheduledExecutorService getScheduler() { return this.scheduler; }
 }

@@ -39,7 +39,8 @@ public class NetworkUtil {
     public static Set<Vector3i> getAdjacent(Vector3i pos) {
         Set<Vector3i> result = new HashSet<>();
         for (Vector3i direction : DIRECTIONS) {
-            result.add(pos.add(direction));
+            Vector3i newVec = pos.clone().add(direction);
+            result.add(newVec);
         }
         return result;
     }
