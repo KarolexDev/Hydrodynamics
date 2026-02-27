@@ -1,5 +1,7 @@
 package com.example.exampleplugin.util;
 
+import com.hypixel.hytale.server.core.universe.world.connectedblocks.ConnectedBlockFaceTags;
+
 public enum BlockFaceEnum {
     NONE((byte) 0b0),
     WEST((byte) 0b1), EAST((byte) 0b10),
@@ -10,5 +12,6 @@ public enum BlockFaceEnum {
 
     BlockFaceEnum(byte bits) {
         this.bits = bits;
+        ConnectedBlockFaceTags
     }
 }

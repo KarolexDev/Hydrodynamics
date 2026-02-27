@@ -1,7 +1,11 @@
 package com.example.exampleplugin.network;
 
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.world.World;
+import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -154,5 +158,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent> {
 
     protected abstract String fromConnectionMaskToBlockID(byte bits);
 
-    protected abstract void updateConnectionOnCoords(World world, byte bits); // <-- hook to world!
+    protected abstract void updateConnectionOnCoords(Vector3i currentBlockCoords, byte connectionMask,
+                                                     int index,
+                                                     @NonNull ArchetypeChunk<ChunkStore> chunk,
+                                                     @NonNull CommandBuffer<ChunkStore> commandBuffer); // <-- hook to world!
 }
