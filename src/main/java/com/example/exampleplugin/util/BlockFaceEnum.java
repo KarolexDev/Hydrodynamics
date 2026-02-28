@@ -1,6 +1,7 @@
 package com.example.exampleplugin.util;
 
 import com.hypixel.hytale.server.core.universe.world.connectedblocks.ConnectedBlockFaceTags;
+import com.hypixel.hytale.server.core.universe.world.connectedblocks.CustomConnectedBlockTemplateAsset;
 
 public enum BlockFaceEnum {
     NONE((byte) 0b0),
@@ -12,6 +13,10 @@ public enum BlockFaceEnum {
 
     BlockFaceEnum(byte bits) {
         this.bits = bits;
-        ConnectedBlockFaceTags
+
+    }
+
+    public void someFunc() {
+        // CustomConnectedBlockTemplateAsset.getAssetMap().getAsset().
     }
 }
