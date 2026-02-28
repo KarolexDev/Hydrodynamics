@@ -1,21 +1,24 @@
 package com.example.exampleplugin.Resource;
 
+import com.example.exampleplugin.ExamplePlugin;
 import com.example.exampleplugin.component.ExampleComponent;
 import com.example.exampleplugin.network.BlockNetwork;
-import com.hypixel.hytale.component.ArchetypeChunk;
-import com.hypixel.hytale.component.CommandBuffer;
-import com.hypixel.hytale.component.Resource;
-import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.modules.block.BlockModule;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
+import com.hypixel.hytale.server.core.universe.world.connectedblocks.*;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 public class ExampleNetworkResource extends BlockNetwork<ExampleComponent> implements Resource<EntityStore> {
+
+    public static ResourceType<EntityStore, ExampleNetworkResource> getResourceType() {
+        ExamplePlugin.getInstance().getExampleNetworkResourceType();
+    }
 
     @Override
     public @Nullable Resource<EntityStore> clone() {
@@ -46,6 +49,7 @@ public class ExampleNetworkResource extends BlockNetwork<ExampleComponent> imple
                             state,
                             true
                     );
+                    store.getComponent(stateInfo.getChunkRef(), ConnectedBlockRuleSet.getConnectedBlockType());
                 }
         );
     }

@@ -1,8 +1,11 @@
 package com.example.exampleplugin.network;
 
-public interface BlockNetworkComponent {
+import com.example.exampleplugin.component.ExampleComponent;
 
-    void del(BlockNetworkComponent flux);
+public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
 
-    void add(BlockNetworkComponent flux);
+    C del(C flux);
+    C add(C flux);
+    C calculateFlux(C from, C to);
+    C[] partition(int left_size, int right_size);
 }
