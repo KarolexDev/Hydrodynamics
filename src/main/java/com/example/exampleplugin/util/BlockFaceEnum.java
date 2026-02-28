@@ -17,6 +17,6 @@ public enum BlockFaceEnum {
     }
 
     public void someFunc() {
-        // CustomConnectedBlockTemplateAsset.getAssetMap().getAsset().
+        // CustomConnectedBlockTemplateAsset.getAssetMap().getAsset(). TODO
     }
 }
