@@ -15,4 +15,14 @@ public class ExampleNetworkResource extends BlockNetwork<ExampleComponent> imple
     public @Nullable Resource<EntityStore> clone() {
         return null;
     }
+
+    @Override
+    public void runOnBlockAdded() {
+        return;
+    }
+
+    @Override
+    public void runOnBlockRemoved() {
+        return;
+    }
 }
