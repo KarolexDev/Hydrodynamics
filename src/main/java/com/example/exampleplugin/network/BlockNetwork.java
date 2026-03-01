@@ -13,6 +13,21 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("BlockNetwork[nodes=").append(nodes.size()).append("] {\n");
+        for (Node node : nodes) {
+            sb.append("  Node{blocks=").append(node.blocks.size())
+                    .append(", edges=").append(node.connectedEdges.size())
+                    .append(", storage=").append(node.storage)
+                    .append(", positions=").append(node.blocks)
+                    .append("}\n");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
     private final Map<Vector3i, Node> nodeMap = new HashMap<>();
     private final Set<Node> nodes = new HashSet<>();
 
@@ -159,13 +174,12 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     public void onBlockPlaced(Vector3i pos, WorldChunk chunk, C storage) {
         byte mask = BlockFaceEnum.readFromWorld(chunk, pos);
-        int connectionCount = Integer.bitCount(mask & 0xFF);
 
-        List<Byte>     activeFaces        = new ArrayList<>();
         List<Vector3i> neighbourPositions = new ArrayList<>();
         List<Node>     neighbourNodes     = new ArrayList<>();
+        List<Byte>     neighbourMasks     = new ArrayList<>();
 
-        for (int i = 0; i < BlockFaceEnum.FACE_BITS.length; i++) {
+        for (int i = 0; i < 6; i++) {
             if ((mask & BlockFaceEnum.FACE_BITS[i]) == 0) continue;
 
             Vector3i neighbourPos  = new Vector3i(pos).add(BlockFaceEnum.FACE_OFFSETS[i]);
@@ -175,44 +189,66 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             byte neighbourMask = BlockFaceEnum.readFromWorld(chunk, neighbourPos);
             if ((neighbourMask & BlockFaceEnum.opposite(BlockFaceEnum.FACE_BITS[i])) == 0) continue;
 
-            activeFaces.add(BlockFaceEnum.FACE_BITS[i]);
             neighbourPositions.add(neighbourPos);
             neighbourNodes.add(neighbourNode);
+            neighbourMasks.add(neighbourMask);
         }
 
-        // Nodes die nach der Umstrukturierung Update-Wellen bekommen sollen.
         Set<Node> waveTriggers = new LinkedHashSet<>();
+        Set<Node> distinctNeighbourNodes = new LinkedHashSet<>(neighbourNodes);
 
-        if (connectionCount == 2 && activeFaces.size() <= 2) {
-            Set<Node> distinctNeighbourNodes = new LinkedHashSet<>(neighbourNodes);
+        if (distinctNeighbourNodes.isEmpty()) {
+            // Isolierter Block → neuer Node
+            waveTriggers.add(registerNewNode(pos, storage));
 
-            if (distinctNeighbourNodes.size() == 2) {
-                Iterator<Node> it = distinctNeighbourNodes.iterator();
-                mergeNodes(it.next(), it.next(), pos, storage);
-                // Der zusammengeführte Node ist jetzt unter pos erreichbar.
-                waveTriggers.add(nodeMap.get(pos));
-            } else if (distinctNeighbourNodes.size() == 1) {
-                Node target = distinctNeighbourNodes.iterator().next();
+        } else if (distinctNeighbourNodes.size() == 1) {
+            Node target             = distinctNeighbourNodes.iterator().next();
+            Vector3i actualNeighbourPos  = neighbourPositions.getFirst();
+            byte     actualNeighbourMask = neighbourMasks.getFirst();
+
+            if (Integer.bitCount(actualNeighbourMask & 0xFF) <= 2) {
+                // Einfache Pipe-Verlängerung → Block dem bestehenden Node hinzufügen
                 target.blocks.add(pos);
                 target.storage.add(storage);
                 nodeMap.put(pos, target);
                 waveTriggers.add(target);
             } else {
-                waveTriggers.add(registerNewNode(pos, storage));
+                // Nachbar wird Junction → bestehenden Node splitten
+                splitNode(target, actualNeighbourPos, chunk);
+
+                Node newNode = registerNewNode(pos, storage);
+                Node resolvedNeighbour = nodeMap.get(actualNeighbourPos);
+                Edge edge = new Edge(new Vector3i(pos), new Vector3i(actualNeighbourPos));
+                edge.flux = storage.zero();
+                newNode.connectedEdges.add(edge);
+                resolvedNeighbour.connectedEdges.add(edge);
+                waveTriggers.add(newNode);
+                waveTriggers.add(resolvedNeighbour);
             }
 
+        } else if (distinctNeighbourNodes.size() == 2) {
+            // Zwei verschiedene Nachbar-Nodes → zusammenführen
+            Iterator<Node> it = distinctNeighbourNodes.iterator();
+            mergeNodes(it.next(), it.next(), pos, storage);
+            waveTriggers.add(nodeMap.get(pos));
+
         } else {
+            // Junction: neuer Node mit Edges zu allen Nachbarn
             Node newNode = registerNewNode(pos, storage);
             waveTriggers.add(newNode);
 
             for (int i = 0; i < neighbourPositions.size(); i++) {
-                if (needsSplit(neighbourNodes.get(i), neighbourPositions.get(i))) {
-                    splitNode(neighbourNodes.get(i), neighbourPositions.get(i), chunk);
+                Vector3i neighbourPos  = neighbourPositions.get(i);
+                Node     neighbour     = neighbourNodes.get(i);
+                byte     neighbourMask = neighbourMasks.get(i);
+
+                if (Integer.bitCount(neighbourMask & 0xFF) > 2) {
+                    splitNode(neighbour, neighbourPos, chunk);
                 }
 
-                Node resolvedNeighbour = nodeMap.get(neighbourPositions.get(i));
-                Edge edge = new Edge(new Vector3i(pos), new Vector3i(neighbourPositions.get(i)));
-                edge.flux = storage.zero(); // edge.flux = storage.zero();
+                Node resolvedNeighbour = nodeMap.get(neighbourPos);
+                Edge edge = new Edge(new Vector3i(pos), new Vector3i(neighbourPos));
+                edge.flux = storage.zero();
                 newNode.connectedEdges.add(edge);
                 resolvedNeighbour.connectedEdges.add(edge);
                 waveTriggers.add(resolvedNeighbour);
@@ -222,6 +258,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         for (Node trigger : waveTriggers) {
             activeWaves.add(new UpdateWave(trigger));
         }
+        runOnBlockAdded();
     }
 
     public void onBlockRemoved(Vector3i pos, WorldChunk chunk) {
@@ -229,19 +266,31 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         if (removedNode == null) return;
 
         removedNode.blocks.remove(pos);
+
+        // Alle Edges die diesen Block berühren sammeln und von Nachbarn entfernen
+        Set<Edge> removedEdges = new HashSet<>();
+        Set<Node> affectedNeighbours = new LinkedHashSet<>();
+        for (Edge e : removedNode.connectedEdges) {
+            if (e.from.equals(pos) || e.to.equals(pos)) {
+                removedEdges.add(e);
+                Node neighbour = e.other(removedNode);
+                if (neighbour != null) {
+                    neighbour.connectedEdges.remove(e);
+                    affectedNeighbours.add(neighbour);
+                }
+            }
+        }
+        removedNode.connectedEdges.removeAll(removedEdges);
+
         nodes.remove(removedNode);
 
-        // Alle Edges die diesen Block berühren entfernen und betroffene Nachbar-Nodes sammeln.
-        Set<Node> affectedNeighbours = new LinkedHashSet<>();
-        for (Edge edge : new ArrayList<>(removedNode.connectedEdges)) {
-            Node neighbour = edge.other(removedNode);
-            neighbour.connectedEdges.remove(edge);
-            affectedNeighbours.add(neighbour);
-        }
-        removedNode.connectedEdges.clear();
+        Set<Node> waveTriggers = new LinkedHashSet<>();
 
-        // Falls der Node noch Blöcke hatte, verbleibende Blöcke in Segmente aufteilen.
+        // Verbleibende Blöcke des alten Nodes per BFS in Segmente aufteilen
         if (!removedNode.blocks.isEmpty()) {
+            // Temporär aus nodeMap entfernen für saubere BFS
+            for (Vector3i b : removedNode.blocks) nodeMap.remove(b);
+
             Set<Vector3i> unvisited = new LinkedHashSet<>(removedNode.blocks);
             while (!unvisited.isEmpty()) {
                 Vector3i seed = unvisited.iterator().next();
@@ -255,8 +304,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 bfs.add(seed);
                 while (!bfs.isEmpty()) {
                     Vector3i cur = bfs.poll();
-                    for (Vector3i offset : BlockFaceEnum.FACE_OFFSETS) {
-                        Vector3i adj = new Vector3i(cur).add(offset);
+                    for (int i = 0; i < BlockFaceEnum.FACE_OFFSETS.length; i++) {
+                        Vector3i adj = new Vector3i(cur).add(BlockFaceEnum.FACE_OFFSETS[i]);
                         if (unvisited.remove(adj)) {
                             seg.blocks.add(adj);
                             nodeMap.put(adj, seg);
@@ -269,49 +318,56 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 C[] parts = removedNode.storage.partition(seg.blocks.size(), removedNode.blocks.size());
                 seg.storage = parts[0];
 
+                // Edges des alten Nodes die zu diesem Segment gehören übernehmen
                 for (Edge e : removedNode.connectedEdges) {
-                    boolean startHere = seg.blocks.contains(e.from);
-                    boolean endHere   = seg.blocks.contains(e.to);
-                    if (startHere || endHere) seg.connectedEdges.add(e);
+                    if (seg.blocks.contains(e.from) || seg.blocks.contains(e.to))
+                        seg.connectedEdges.add(e);
                 }
 
                 nodes.add(seg);
+                waveTriggers.add(seg);
             }
         }
 
-        // Nodes die nach der Umstrukturierung Update-Wellen bekommen sollen.
-        Set<Node> waveTriggers = new LinkedHashSet<>();
-
+        // Betroffene Nachbarn prüfen: ggf. zusammenführen wenn Junction weggefallen
         for (Node neighbour : affectedNeighbours) {
+            // Nachbar könnte inzwischen durch BFS oben ersetzt worden sein
             Vector3i representativePos = neighbour.blocks.iterator().next();
-            byte newMask = BlockFaceEnum.readFromWorld(chunk, representativePos);
-            int newConnectionCount = Integer.bitCount(newMask & 0xFF);
+            Node currentNeighbour = nodeMap.get(representativePos);
+            if (currentNeighbour == null) continue;
 
-            // Nachbar verlor eine Verbindung → immer eine Welle auslösen.
-            waveTriggers.add(neighbour);
+            waveTriggers.add(currentNeighbour);
 
-            if (newConnectionCount != 2) continue;
+            byte neighbourMask = BlockFaceEnum.readFromWorld(chunk, representativePos);
+            int connectionCount = Integer.bitCount(neighbourMask & 0xFF);
 
-            // War Junction, ist jetzt einfache Pipe → ggf. mit anderem Node zusammenführen.
-            List<Node> pipedNeighbours = new ArrayList<>();
+            // Hatte der Nachbar genau 2 Verbindungen übrig → war Junction, ist jetzt Pipe
+            // → prüfen ob die zwei verbleibenden Nachbarn zusammengeführt werden können
+            if (connectionCount != 2) continue;
+
+            Node pipeNeighbourA = null;
+            Node pipeNeighbourB = null;
             for (int i = 0; i < BlockFaceEnum.FACE_BITS.length; i++) {
-                if ((newMask & BlockFaceEnum.FACE_BITS[i]) == 0) continue;
+                if ((neighbourMask & BlockFaceEnum.FACE_BITS[i]) == 0) continue;
                 Vector3i nPos = new Vector3i(representativePos).add(BlockFaceEnum.FACE_OFFSETS[i]);
                 Node n = nodeMap.get(nPos);
-                if (n != null && n != neighbour) pipedNeighbours.add(n);
+                if (n == null || n == currentNeighbour) continue;
+                if (pipeNeighbourA == null) pipeNeighbourA = n;
+                else pipeNeighbourB = n;
             }
 
-            if (pipedNeighbours.size() == 2) {
-                mergeNodes(pipedNeighbours.get(0), pipedNeighbours.get(1),
-                        representativePos, neighbour.storage);
-                // Zusammengeführter Node unter representativePos triggern.
-                waveTriggers.add(nodeMap.get(representativePos));
+            if (pipeNeighbourA != null && pipeNeighbourB != null && pipeNeighbourA != pipeNeighbourB) {
+                mergeNodes(pipeNeighbourA, pipeNeighbourB, representativePos, currentNeighbour.storage);
+                Node mergedNode = nodeMap.get(representativePos);
+                waveTriggers.remove(currentNeighbour);
+                waveTriggers.add(mergedNode);
             }
         }
 
         for (Node trigger : waveTriggers) {
             activeWaves.add(new UpdateWave(trigger));
         }
+        runOnBlockRemoved();
     }
 
     /** Legt einen neuen Node an und registriert alle seine Blöcke in nodeMap. */
@@ -354,33 +410,37 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         nodes.add(merged);
     }
 
-    /**
-     * Gibt true zurück wenn der Node an neighbourPos durch eine neue externe
-     * Verbindung von einem einfachen Pipe-Node zum Junction wird.
-     */
-    private boolean needsSplit(Node node, Vector3i representativePos) {
-        // Ein Node war eine einfache Pipe wenn er genau 2 Edges hatte.
-        // Hat er durch den neuen Block jetzt eine dritte, muss er gesplittet werden.
-        return node.connectedEdges.size() >= 2;
-    }
-
-    /**
-     * Spaltet einen Node auf: Jeder Block des Nodes der eine Junction-Verbindung hat
-     * wird zu einem eigenen Node. Einfache Durchgangs-Blöcke bleiben zusammen.
-     */
     private void splitNode(Node node, Vector3i junctionPos, WorldChunk chunk) {
         nodes.remove(node);
-        for (Vector3i b : node.blocks) nodeMap.remove(b);
+        node.blocks.remove(junctionPos);
+        nodeMap.remove(junctionPos);
 
-        // BFS: gruppiere Blöcke in zusammenhängende Segmente,
-        // wobei Junction-Blöcke (connectionCount != 2) Trennpunkte sind.
+        // Junction-Block wird ein eigener Node
+        Node junctionNode = new Node();
+        junctionNode.blocks.add(junctionPos);
+        nodeMap.put(junctionPos, junctionNode);
+
+        @SuppressWarnings("unchecked")
+        C[] junctionParts = node.storage.partition(1, node.blocks.size() + 1);
+        junctionNode.storage = junctionParts[0];
+
+        // Externe Edges die den Junction-Block berühren übernehmen
+        for (Edge e : node.connectedEdges) {
+            if (e.from.equals(junctionPos) || e.to.equals(junctionPos)) {
+                junctionNode.connectedEdges.add(e);
+            }
+        }
+        node.connectedEdges.removeAll(junctionNode.connectedEdges);
+
+        nodes.add(junctionNode);
+
+        // Verbleibende Blöcke per BFS in zusammenhängende Segmente aufteilen
         Set<Vector3i> unvisited = new LinkedHashSet<>(node.blocks);
         while (!unvisited.isEmpty()) {
             Vector3i seed = unvisited.iterator().next();
             unvisited.remove(seed);
 
             Node seg = new Node();
-            seg.storage = node.storage.zero(); // Kapazität wird unten anteilig gesetzt
             seg.blocks.add(seed);
             nodeMap.put(seed, seg);
 
@@ -388,9 +448,6 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             bfs.add(seed);
             while (!bfs.isEmpty()) {
                 Vector3i cur = bfs.poll();
-                byte curMask = BlockFaceEnum.readFromWorld(chunk, cur);
-                if (Integer.bitCount(curMask & 0xFF) != 2) continue; // Junction → Grenze
-
                 for (int i = 0; i < BlockFaceEnum.FACE_OFFSETS.length; i++) {
                     Vector3i adj = new Vector3i(cur).add(BlockFaceEnum.FACE_OFFSETS[i]);
                     if (unvisited.remove(adj)) {
@@ -401,16 +458,46 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 }
             }
 
-            // Kapazität anteilig aus dem alten Node übernehmen
             @SuppressWarnings("unchecked")
             C[] parts = node.storage.partition(seg.blocks.size(), node.blocks.size());
             seg.storage = parts[0];
 
-            // Externe Edges die zu diesem Segment gehören übernehmen
+            // Externe Edges übernehmen
             for (Edge e : node.connectedEdges) {
-                boolean startHere = seg.blocks.contains(e.from);
-                boolean endHere   = seg.blocks.contains(e.to);
-                if (startHere || endHere) seg.connectedEdges.add(e);
+                if (seg.blocks.contains(e.from) || seg.blocks.contains(e.to))
+                    seg.connectedEdges.add(e);
+            }
+
+            // Neue Edge zwischen diesem Segment und dem junctionNode erstellen,
+            // falls ein Block des Segments direkt an junctionPos angrenzt
+            boolean adjacentToJunction = false;
+            for (Vector3i b : seg.blocks) {
+                for (int i = 0; i < BlockFaceEnum.FACE_OFFSETS.length; i++) {
+                    if (new Vector3i(b).add(BlockFaceEnum.FACE_OFFSETS[i]).equals(junctionPos)) {
+                        adjacentToJunction = true;
+                        break;
+                    }
+                }
+                if (adjacentToJunction) break;
+            }
+
+            if (adjacentToJunction) {
+                // Grenzblock des Segments finden der an junctionPos angrenzt
+                Vector3i segBoundary = null;
+                outer:
+                for (Vector3i b : seg.blocks) {
+                    for (int i = 0; i < BlockFaceEnum.FACE_OFFSETS.length; i++) {
+                        if (new Vector3i(b).add(BlockFaceEnum.FACE_OFFSETS[i]).equals(junctionPos)) {
+                            segBoundary = b;
+                            break outer;
+                        }
+                    }
+                }
+
+                Edge newEdge = new Edge(new Vector3i(segBoundary), new Vector3i(junctionPos));
+                newEdge.flux = node.storage.zero();
+                seg.connectedEdges.add(newEdge);
+                junctionNode.connectedEdges.add(newEdge);
             }
 
             nodes.add(seg);
@@ -425,4 +512,15 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             if (oldNode.blocks.contains(b)) nodeMap.put(b, newNode);
         }
     }
+
+    public void clear() {
+        nodeMap.clear();
+        nodes.forEach(node -> node.connectedEdges.clear());
+        nodes.clear();
+        activeWaves.clear();
+    }
+
+    public abstract void runOnBlockAdded();
+
+    public abstract void runOnBlockRemoved();
 }
