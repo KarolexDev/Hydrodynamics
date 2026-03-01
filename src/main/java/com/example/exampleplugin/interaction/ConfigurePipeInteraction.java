@@ -1,7 +1,7 @@
 package com.example.exampleplugin.interaction;
 
 import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.component.ThermalComponent;
+import com.example.exampleplugin.component.ExampleComponent;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
@@ -57,18 +57,13 @@ public class ConfigurePipeInteraction extends SimpleInteraction {
             Ref<ChunkStore> componentRef = worldChunk.getBlockComponentEntity(targetVec.x, targetVec.y, targetVec.z);
             if (componentRef == null) { return; }
 
-            if (world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getThermalComponentType()) == null) { return; }
-            ThermalComponent thermalComponent = (ThermalComponent) world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getThermalComponentType());
+            if (world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getExampleComponentType()) == null) { return; }
+            ExampleComponent exampleComponent = (ExampleComponent) world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getExampleComponentType());
 
             player.sendMessage(Message.raw("Interacted with this custom interaction code..."));
 
-            if(thermalComponent != null) {
-                player.sendMessage(Message.raw("This block has a Thermal Component!\n\tCurrent Temperature: " + (thermalComponent.data.getTemperature() - 273.15f) + " °C"));
-                player.sendMessage(Message.raw("\t Current Pressure: " + thermalComponent.data.getPressure()));
-                player.sendMessage(Message.raw("\t Current Entropy: " + thermalComponent.data.getEntropy()));
-                player.sendMessage(Message.raw("\t Current Energy: " + thermalComponent.data.getEnergy()));
-                player.sendMessage(Message.raw("\t Current Particle Count: " + thermalComponent.data.getParticleCount()));
-                player.sendMessage(Message.raw("\t Current Volume: " + thermalComponent.data.getVolume()));
+            if(exampleComponent != null) {
+                // Do smth with ExampleComponent...
             } else {
                 player.sendMessage(Message.raw("This block does NOT have a Thermal Component!"));
             }
