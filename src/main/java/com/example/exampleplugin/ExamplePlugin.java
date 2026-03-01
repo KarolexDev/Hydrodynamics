@@ -1,5 +1,7 @@
 package com.example.exampleplugin;
 
+import com.example.exampleplugin.command.ClearNetworkCommand;
+import com.example.exampleplugin.command.ExampleCommand;
 import com.example.exampleplugin.resource.ExampleNetworkResource;
 import com.example.exampleplugin.component.ExampleComponent;
 import com.example.exampleplugin.interaction.ConfigurePipeInteraction;
@@ -35,12 +37,14 @@ public class ExamplePlugin extends JavaPlugin {
     @Override
     protected void setup() {
         this.getCommandRegistry().registerCommand(new ExampleCommand(this.getName(), this.getManifest().getVersion().toString()));
+        this.getCommandRegistry().registerCommand(new ClearNetworkCommand(this.getName(), this.getManifest().getVersion().toString()));
 
         this.exampleComponentType = this.getChunkStoreRegistry().registerComponent(ExampleComponent.class, "ExampleComponent", ExampleComponent.CODEC);
 
         this.exampleNetworkResourceType = this.getEntityStoreRegistry().registerResource(ExampleNetworkResource.class, ExampleNetworkResource::new);
 
         this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockPlaceEventSystem());
+        this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockBreakEventSystem());
 
         this.getCodecRegistry(Interaction.CODEC)
                 .register("ConfigurePipe", ConfigurePipeInteraction.class, ConfigurePipeInteraction.CODEC);

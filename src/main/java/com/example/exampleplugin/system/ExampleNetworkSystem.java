@@ -8,6 +8,7 @@ import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
+import com.hypixel.hytale.server.core.event.events.ecs.BreakBlockEvent;
 import com.hypixel.hytale.server.core.event.events.ecs.PlaceBlockEvent;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
@@ -36,7 +37,6 @@ public class ExampleNetworkSystem {
 
     public static class NetworkBlockPlaceEventSystem extends EntityEventSystem<EntityStore, PlaceBlockEvent> {
         public NetworkBlockPlaceEventSystem() { super(PlaceBlockEvent.class); }
-
 
         @Override
         public void handle(int index, @NonNull ArchetypeChunk<EntityStore> archetypeChunk, @NonNull Store<EntityStore> store, @NonNull CommandBuffer<EntityStore> commandBuffer, @NonNull PlaceBlockEvent placeBlockEvent) {
@@ -82,6 +82,44 @@ public class ExampleNetworkSystem {
                     }
                     // SignalSourceManager.updateNetwork(world, x, y, z);
                     // SignalSourceManager.updateNeighborShapes(world, x, y, z);
+                });
+            } catch (Exception e) {
+
+            }
+        }
+
+        @Override
+        public @Nullable Query<EntityStore> getQuery() {
+            return Archetype.empty();
+        }
+    }
+
+    public static class NetworkBlockBreakEventSystem extends EntityEventSystem<EntityStore, BreakBlockEvent> {
+        public NetworkBlockBreakEventSystem() { super(BreakBlockEvent.class); }
+
+        @Override
+        public void handle(int i, @NonNull ArchetypeChunk<EntityStore> archetypeChunk, @NonNull Store<EntityStore> store, @NonNull CommandBuffer<EntityStore> commandBuffer, @NonNull BreakBlockEvent breakBlockEvent) {
+            try {
+                World world = Universe.get().getDefaultWorld();
+                if (world == null) {
+                    return;
+                }
+
+                Vector3i targetPos = breakBlockEvent.getTargetBlock();
+                int x = targetPos.getX();
+                int y = targetPos.getY();
+                int z = targetPos.getZ();
+                world.execute(() -> {
+                    BlockType bt = world.getBlockType(x, y, z);
+                    Holder<ChunkStore> blockEntity = bt.getBlockEntity();
+                    if (blockEntity != null) {
+                        return;
+                    }
+                    ExampleNetworkResource network = store.getResource(ExampleNetworkResource.getResourceType());
+                    network.onBlockRemoved(
+                            new Vector3i(x, y, z),
+                            world.getChunk(ChunkUtil.indexChunkFromBlock(x, z))
+                    );
                 });
             } catch (Exception e) {
 

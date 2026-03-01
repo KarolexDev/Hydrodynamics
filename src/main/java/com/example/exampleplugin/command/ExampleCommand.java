@@ -1,9 +1,12 @@
-package com.example.exampleplugin;
+package com.example.exampleplugin.command;
 
+import com.example.exampleplugin.resource.ExampleNetworkResource;
+import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.command.system.basecommands.CommandBase;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 import javax.annotation.Nonnull;
 
@@ -15,7 +18,7 @@ public class ExampleCommand extends CommandBase {
     private final String pluginVersion;
 
     public ExampleCommand(String pluginName, String pluginVersion) {
-        super("supergay", "Prints a test message from the " + pluginName + " plugin.");
+        super("blockNetwork", "Prints a test message from the " + pluginName + " plugin.");
         this.setPermissionGroup(GameMode.Adventure); // Allows the command to be used by anyone, not just OP
         this.pluginName = pluginName;
         this.pluginVersion = pluginVersion;
@@ -23,6 +26,9 @@ public class ExampleCommand extends CommandBase {
 
     @Override
     protected void executeSync(@Nonnull CommandContext ctx) {
-        ctx.sendMessage(Message.raw("Hello from the " + pluginName + " v" + pluginVersion + " plugin!"));
+        Ref<EntityStore> storeRef = ctx.senderAsPlayerRef();
+        ExampleNetworkResource network = storeRef.getStore().getResource(ExampleNetworkResource.getResourceType());
+
+        ctx.sendMessage(Message.raw(network.toString()));
     }
 }
