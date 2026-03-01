@@ -1,10 +1,9 @@
 package com.example.exampleplugin;
 
-import com.example.exampleplugin.Resource.ExampleNetworkResource;
+import com.example.exampleplugin.resource.ExampleNetworkResource;
 import com.example.exampleplugin.component.ExampleComponent;
 import com.example.exampleplugin.interaction.ConfigurePipeInteraction;
 import com.example.exampleplugin.system.ExampleNetworkSystem;
-import com.hypixel.hytale.component.Component;
 import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.component.ResourceType;
 import com.hypixel.hytale.logger.HytaleLogger;

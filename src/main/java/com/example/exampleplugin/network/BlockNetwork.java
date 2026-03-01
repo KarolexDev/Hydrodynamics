@@ -12,7 +12,7 @@ import org.jspecify.annotations.NonNull;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public abstract class BlockNetwork<C extends BlockNetworkComponent> {
+public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     private final Map<Vector3i, Node> nodeMap = new HashMap<>();
     private final Set<Node> nodes = new HashSet<>();
 
@@ -194,7 +194,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent> {
             } else if (distinctNeighbourNodes.size() == 1) {
                 Node target = distinctNeighbourNodes.iterator().next();
                 target.blocks.add(pos);
-                target.storage = target.storage.add(storage);
+                target.storage.add(storage);
                 nodeMap.put(pos, target);
                 waveTriggers.add(target);
             } else {
@@ -212,7 +212,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent> {
 
                 Node resolvedNeighbour = nodeMap.get(neighbourPositions.get(i));
                 Edge edge = new Edge(new Vector3i(pos), new Vector3i(neighbourPositions.get(i)));
-                edge.flux = storage.zero();
+                edge.flux = storage.zero(); // edge.flux = storage.zero();
                 newNode.connectedEdges.add(edge);
                 resolvedNeighbour.connectedEdges.add(edge);
                 waveTriggers.add(resolvedNeighbour);

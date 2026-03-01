@@ -8,4 +8,5 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     C add(C flux);
     C calculateFlux(C from, C to);
     C[] partition(int left_size, int right_size);
+    C zero();
 }

@@ -21,9 +21,9 @@ public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>
                     .add()
                     .build();
 
-    public static ComponentType<ChunkStore, ExampleComponent> getComponentType() {
-        return ExamplePlugin.getInstance().getExampleComponentType();
-    }
+    public static ComponentType<ChunkStore, ExampleComponent> getComponentType() { return ExamplePlugin.getInstance().getExampleComponentType(); }
+
+    public ExampleComponent() { this.val = 0; }
 
     public ExampleComponent(double val) { this.val = val; }
 
@@ -34,25 +34,28 @@ public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>
 
     @Override
     public ExampleComponent del(ExampleComponent flux) {
-        return null;
+        return this;
     }
 
     @Override
     public ExampleComponent add(ExampleComponent flux) {
-        return null;
+        return this;
     }
 
     @Override
     public ExampleComponent calculateFlux(ExampleComponent from, ExampleComponent to) {
-        return null;
+        return this;
     }
 
-    public static ExampleComponent zero() {
-        return null;
+    public ExampleComponent zero() {
+        return new ExampleComponent(0d);
     }
 
     @Override
     public ExampleComponent[] partition(int left_size, int right_size) {
-        return new ExampleComponent[0];
+        ExampleComponent[] result = new ExampleComponent[2];
+        result[0] = new ExampleComponent();
+        result[1] = new ExampleComponent();
+        return result;
     }
 }

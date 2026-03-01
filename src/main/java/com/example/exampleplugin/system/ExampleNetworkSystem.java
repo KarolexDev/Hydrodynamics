@@ -1,21 +1,16 @@
 package com.example.exampleplugin.system;
 
-import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.Resource.ExampleNetworkResource;
+import com.example.exampleplugin.resource.ExampleNetworkResource;
 import com.example.exampleplugin.component.ExampleComponent;
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.system.EntityEventSystem;
-import com.hypixel.hytale.component.system.tick.EntityTickingSystem;
-import com.hypixel.hytale.component.system.tick.TickingSystem;
+import com.hypixel.hytale.math.util.ChunkUtil;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.event.events.ecs.PlaceBlockEvent;
-import com.hypixel.hytale.server.core.modules.block.BlockModule;
-import com.hypixel.hytale.server.core.modules.collision.WorldUtil;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
-import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.jspecify.annotations.NonNull;
@@ -63,7 +58,14 @@ public class ExampleNetworkSystem {
                     }
                     // Break Block Event
                     else if (Objects.equals(bt.getId(), "Empty")) {
-                        return;
+                        ExampleComponent component = blockEntity.getComponent(ExampleComponent.getComponentType());
+                        if (component != null) {
+                            ExampleNetworkResource network = store.getResource(ExampleNetworkResource.getResourceType());
+                            network.onBlockRemoved(
+                                    new Vector3i(x, y, z),
+                                    world.getChunk(ChunkUtil.indexChunkFromBlock(x, z))
+                            );
+                        }
                     }
                     // Place Block Event
                     else {
@@ -72,8 +74,9 @@ public class ExampleNetworkSystem {
                             ExampleNetworkResource network = store.getResource(ExampleNetworkResource.getResourceType());
                             network.onBlockPlaced(
                                     new Vector3i(x, y, z),
-                                    blockEntity.getComponent(WorldChunk.getComponentType()),
-                                    ExampleComponent.zero()
+                                    world.getChunk(ChunkUtil.indexChunkFromBlock(x, z)),
+                                    // blockEntity.getComponent(WorldChunk.getComponentType()),
+                                    new ExampleComponent()
                             );
                         }
                     }
