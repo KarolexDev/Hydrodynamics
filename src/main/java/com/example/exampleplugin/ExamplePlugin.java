@@ -17,11 +17,8 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 public class ExamplePlugin extends JavaPlugin {
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
-
     private static ExamplePlugin instance;
-
     private ComponentType<ChunkStore, ExampleComponent> exampleComponentType;
-
     private ResourceType<EntityStore, ExampleNetworkResource> exampleNetworkResourceType;
 
     public ExamplePlugin(JavaPluginInit init) {
@@ -43,14 +40,13 @@ public class ExamplePlugin extends JavaPlugin {
 
         this.exampleNetworkResourceType = this.getEntityStoreRegistry().registerResource(ExampleNetworkResource.class, "ExampleNetworkResource", ExampleNetworkResource.CODEC);
 
+        this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkTickingSystem());
         this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockPlaceEventSystem());
         this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockBreakEventSystem());
 
-        this.getCodecRegistry(Interaction.CODEC)
-                .register("ConfigurePipe", ConfigurePipeInteraction.class, ConfigurePipeInteraction.CODEC);
+        this.getCodecRegistry(Interaction.CODEC).register("ConfigurePipe", ConfigurePipeInteraction.class, ConfigurePipeInteraction.CODEC);
     }
 
     public ComponentType<ChunkStore, ExampleComponent> getExampleComponentType() { return this.exampleComponentType; }
-
     public ResourceType<EntityStore, ExampleNetworkResource> getExampleNetworkResourceType() { return this.exampleNetworkResourceType; }
 }

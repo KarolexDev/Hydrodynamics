@@ -5,13 +5,9 @@ import com.example.exampleplugin.util.BlockNetworkSerialization.*;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
-import com.hypixel.hytale.component.ArchetypeChunk;
-import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
-import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
-import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -41,12 +37,12 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         private class Wavefront {
             private Node current;
             private Node cameFrom;
-            int remainingTicks;
+            float remainingTime;
 
-            private Wavefront(Node current, Node cameFrom, int remainingTicks) {
+            private Wavefront(Node current, Node cameFrom, float remainingTime) {
                 this.current = current;
                 this.cameFrom = cameFrom;
-                this.remainingTicks = remainingTicks;
+                this.remainingTime = remainingTime;
             }
 
         }
@@ -57,28 +53,36 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             wavefronts.add(new Wavefront(startNode, null, 0));
         }
 
-        public void tick() {
+        public void tick(float dt) {
             List<Wavefront> next = new ArrayList<>();
 
             for (Wavefront wf : wavefronts) {
-                if (wf.remainingTicks > 0) {
-                    // Noch nicht bereit – weiter warten
-                    next.add(new Wavefront(wf.current, wf.cameFrom, wf.remainingTicks - 1));
+                wf.remainingTime -= dt;
+                if (wf.remainingTime > 0) {
+                    next.add(wf);
                     continue;
                 }
 
-                double dt = wf.current.getAndUpdateTimestamp();
-                wf.current.update(dt);
+                // Node updaten und Änderung messen
+                // TODO: CORRECT LOGIC
+                float changeRate = 0f;
+                C storageBefore = wf.current.storage.copy();
+                if (storageBefore != null) {
+                    wf.current.update(dt);
+                    changeRate = storageBefore.changeRate(wf.current.storage);
+                }
 
+                // Zu Nachbarn propagieren
                 for (Edge edge : wf.current.connectedEdges) {
                     Node neighbor = edge.other(wf.current);
+                    if (neighbor == null) { continue; } // TODO: INELEGANT!
                     if (neighbor.equals(wf.cameFrom)) continue;
 
-                    double edgeDt = edge.getAndUpdateTimestamp();
-                    edge.update(edgeDt);
+                    edge.update(dt);
 
-                    int nodeDelay = neighbor.tickDelay(wf.current);
-                    next.add(new Wavefront(neighbor, wf.current, nodeDelay));
+                    // Nachbar bestimmt selbst wie lange er warten will
+                    float delay = neighbor.computeDelay(changeRate);
+                    next.add(new Wavefront(neighbor, wf.current, delay));
                 }
             }
 
@@ -93,19 +97,25 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     private final List<UpdateWave> activeWaves = new ArrayList<>();
 
-    public void tick(int tickCounter) {
+    public void tick(float dt, World world) {
+        if (world == null) return;
 
-        // Bestehende Wellen weiterführen
         for (UpdateWave wave : activeWaves) {
-            wave.tick();
+            wave.tick(dt);
         }
-        // Abgeschlossene Wellen entfernen
-        activeWaves.removeIf(wave -> wave.isFinished());
+        activeWaves.removeIf(UpdateWave::isFinished);
 
-        // Neue Wellen starten für passende Nodes
         for (Node node : nodes) {
-            if (node.triggersUpdates() && tickCounter % node.getUpdateTickRate() == 0) {
+            if (node.triggersUpdates()) {
                 activeWaves.add(new UpdateWave(node));
+            }
+
+            if (node.storage.requiresWorldUpdate()) {
+                for (Vector3i pos : node.blocks) {
+                    final Vector3i capturedPos = new Vector3i(pos);
+                    final C capturedStorage = node.storage;
+                    world.execute(() -> capturedStorage.onWorldUpdate(capturedPos, world));
+                }
             }
         }
     }
@@ -142,6 +152,10 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         /** Alle wieviele Ticks soll eine neue Welle ausgelöst werden? */
         public int getUpdateTickRate() { return 1; }
+
+        public float computeDelay(float changeRate) {
+            return storage.computeDelay(changeRate);
+        }
     }
 
     private final class Edge {
@@ -690,7 +704,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         // Für jede Gruppe ein neues Netzwerk erstellen
         List<BlockNetwork<C>> result = new ArrayList<>();
         for (Set<Node> group : groups) {
-            BlockNetwork<C> newNetwork = /* factory needed */ null;
+            BlockNetwork<C> newNetwork = /* factory needed */ null; // TODO: FACTORY NEEDED!!
             // Nodes serialisieren die zu dieser Gruppe gehören
             @SuppressWarnings("unchecked")
             NodeDTO<C>[] nodeDTOs = new NodeDTO[group.size()];

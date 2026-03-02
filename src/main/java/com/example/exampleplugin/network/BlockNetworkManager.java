@@ -5,6 +5,7 @@ import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.component.Resource;
 import com.hypixel.hytale.math.vector.Vector3i;
+import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.jspecify.annotations.Nullable;
@@ -12,14 +13,18 @@ import org.jspecify.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
-import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
 public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends BlockNetwork<C>> implements Resource<EntityStore> {
 
     final List<N> networks = new ArrayList<>();
     private final Supplier<N> factory;
+
+    public void tick(float dt, World world) {
+        for (N network : networks) {
+            network.tick(dt, world);
+        }
+    }
 
     public BlockNetworkManager(Supplier<N> factory) {
         this.factory = factory;

@@ -1,12 +1,9 @@
 package com.example.exampleplugin.util;
 
-import com.example.exampleplugin.component.ExampleComponent;
-import com.hypixel.hytale.codec.Codec;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.math.vector.Vector3i;
-import java.util.List;
 
 public class BlockNetworkSerialization {
     private BlockNetworkSerialization() { /* Utility Class */ }

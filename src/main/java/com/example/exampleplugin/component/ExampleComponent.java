@@ -7,6 +7,8 @@ import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Component;
 import com.hypixel.hytale.component.ComponentType;
+import com.hypixel.hytale.math.vector.Vector3i;
+import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import org.jspecify.annotations.Nullable;
 
@@ -49,6 +51,31 @@ public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>
 
     public ExampleComponent zero() {
         return new ExampleComponent(0d);
+    }
+
+    @Override
+    public boolean requiresWorldUpdate() {
+        return false;
+    }
+
+    @Override
+    public void onWorldUpdate(Vector3i pos, World world) {
+
+    }
+
+    @Override
+    public ExampleComponent copy() {
+        return new ExampleComponent(this.val);
+    }
+
+    @Override
+    public float changeRate(ExampleComponent previous) {
+        return 0;
+    }
+
+    @Override
+    public float computeDelay(float changeRate) {
+        return 0;
     }
 
     @Override

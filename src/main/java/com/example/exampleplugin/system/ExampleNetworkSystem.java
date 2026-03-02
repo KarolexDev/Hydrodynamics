@@ -23,13 +23,15 @@ import java.util.Objects;
 public class ExampleNetworkSystem {
     public ExampleNetworkSystem() { /* Utility Class */ }
 
-//    public static class NetworkTickingSystem extends TickingSystem<EntityStore> {
-//
-//        @Override
-//        public void tick(float dt, int index, @NonNull Store<EntityStore> store) {
-//
-//        }
-//    }
+    public static class NetworkTickingSystem extends TickingSystem<EntityStore> {
+
+        @Override
+        public void tick(float dt, int index, @NonNull Store<EntityStore> store) {
+            ExampleNetworkResource network = store.getResource(ExampleNetworkResource.getResourceType());
+            World world = Universe.get().getDefaultWorld();
+            network.tick(dt, world);
+        }
+    }
 
     public static class NetworkBlockPlaceEventSystem extends EntityEventSystem<EntityStore, PlaceBlockEvent> {
         public NetworkBlockPlaceEventSystem() { super(PlaceBlockEvent.class); }
