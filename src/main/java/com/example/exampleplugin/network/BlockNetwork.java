@@ -532,6 +532,23 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     // Jede Subklasse liefert ihren eigenen Component-Codec
     protected abstract BuilderCodec<C> getComponentCodec();
 
+    public boolean containsBlock(Vector3i pos) {
+        return nodeMap.containsKey(pos);
+    }
+
+    public boolean isAdjacentTo(Vector3i pos) {
+        for (int i = 0; i < BlockFaceEnum.FACE_OFFSETS.length; i++) {
+            if (nodeMap.containsKey(new Vector3i(pos).add(BlockFaceEnum.FACE_OFFSETS[i]))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isEmpty() {
+        return nodes.isEmpty();
+    }
+
     public static <C extends BlockNetworkComponent<C>, R extends BlockNetwork<C>>
     BuilderCodec<R> createCodec(Class<R> clazz, Supplier<R> factory, BuilderCodec<C> componentCodec) {
 
@@ -615,5 +632,97 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             if (fromNode != null) fromNode.connectedEdges.add(edge);
             if (toNode   != null) toNode.connectedEdges.add(edge);
         }
+    }
+
+    public void mergeFrom(BlockNetwork<C> other) {
+        NodeDTO<C>[] otherNodes = other.serializeNodes();
+        EdgeDTO<C>[] otherEdges = other.serializeEdges();
+
+        // Bestehende Nodes/Edges serialisieren
+        NodeDTO<C>[] thisNodes = serializeNodes();
+        EdgeDTO<C>[] thisEdges = serializeEdges();
+
+        // Kombinieren
+        @SuppressWarnings("unchecked")
+        NodeDTO<C>[] mergedNodes = new NodeDTO[thisNodes.length + otherNodes.length];
+        System.arraycopy(thisNodes, 0, mergedNodes, 0, thisNodes.length);
+        System.arraycopy(otherNodes, 0, mergedNodes, thisNodes.length, otherNodes.length);
+
+        @SuppressWarnings("unchecked")
+        EdgeDTO<C>[] mergedEdges = new EdgeDTO[thisEdges.length + otherEdges.length];
+        System.arraycopy(thisEdges, 0, mergedEdges, 0, thisEdges.length);
+        System.arraycopy(otherEdges, 0, mergedEdges, thisEdges.length, otherEdges.length);
+
+        deserializeNodes(mergedNodes);
+        deserializeEdges(mergedEdges);
+    }
+
+    public List<BlockNetwork<C>> getSplitNetworks() {
+        if (nodes.size() <= 1) return Collections.emptyList();
+
+        // BFS um zusammenhängende Node-Gruppen zu finden
+        Set<Node> unvisited = new HashSet<>(nodes);
+        List<Set<Node>> groups = new ArrayList<>();
+
+        while (!unvisited.isEmpty()) {
+            Set<Node> group = new HashSet<>();
+            Queue<Node> queue = new ArrayDeque<>();
+            Node start = unvisited.iterator().next();
+            queue.add(start);
+            unvisited.remove(start);
+
+            while (!queue.isEmpty()) {
+                Node current = queue.poll();
+                group.add(current);
+                for (Edge edge : current.connectedEdges) {
+                    Node neighbour = edge.other(current);
+                    if (unvisited.remove(neighbour)) {
+                        queue.add(neighbour);
+                    }
+                }
+            }
+            groups.add(group);
+        }
+
+        // Nur eine Gruppe → kein Split
+        if (groups.size() <= 1) return Collections.emptyList();
+
+        // Für jede Gruppe ein neues Netzwerk erstellen
+        List<BlockNetwork<C>> result = new ArrayList<>();
+        for (Set<Node> group : groups) {
+            BlockNetwork<C> newNetwork = /* factory needed */ null;
+            // Nodes serialisieren die zu dieser Gruppe gehören
+            @SuppressWarnings("unchecked")
+            NodeDTO<C>[] nodeDTOs = new NodeDTO[group.size()];
+            int i = 0;
+            for (Node node : group) {
+                NodeDTO<C> dto = new NodeDTO<>();
+                dto.blocks = node.blocks.toArray(new Vector3i[0]);
+                dto.storage = node.storage;
+                nodeDTOs[i++] = dto;
+            }
+            // Edges serialisieren die zu dieser Gruppe gehören
+            Set<Edge> seen = new HashSet<>();
+            List<EdgeDTO<C>> edgeList = new ArrayList<>();
+            for (Node node : group) {
+                for (Edge edge : node.connectedEdges) {
+                    if (seen.add(edge)) {
+                        EdgeDTO<C> dto = new EdgeDTO<>();
+                        dto.from = edge.from;
+                        dto.to = edge.to;
+                        dto.flux = edge.flux;
+                        edgeList.add(dto);
+                    }
+                }
+            }
+            @SuppressWarnings("unchecked")
+            EdgeDTO<C>[] edgeDTOs = edgeList.toArray(new EdgeDTO[0]);
+
+            newNetwork.deserializeNodes(nodeDTOs);
+            newNetwork.deserializeEdges(edgeDTOs);
+            result.add(newNetwork);
+        }
+
+        return result;
     }
 }

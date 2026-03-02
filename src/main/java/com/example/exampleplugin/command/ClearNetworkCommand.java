@@ -29,8 +29,8 @@ public class ClearNetworkCommand extends CommandBase {
         Ref<EntityStore> storeRef = ctx.senderAsPlayerRef();
         ExampleNetworkResource network = storeRef.getStore().getResource(ExampleNetworkResource.getResourceType());
 
-        network.clear();
+        // network.clear();
 
-        ctx.sendMessage(Message.raw("Network Cleared!"));
+        ctx.sendMessage(Message.raw("Network NOT Cleared!"));
     }
 }
