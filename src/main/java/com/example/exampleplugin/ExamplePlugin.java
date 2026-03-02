@@ -41,7 +41,7 @@ public class ExamplePlugin extends JavaPlugin {
 
         this.exampleComponentType = this.getChunkStoreRegistry().registerComponent(ExampleComponent.class, "ExampleComponent", ExampleComponent.CODEC);
 
-        this.exampleNetworkResourceType = this.getEntityStoreRegistry().registerResource(ExampleNetworkResource.class, ExampleNetworkResource::new);
+        this.exampleNetworkResourceType = this.getEntityStoreRegistry().registerResource(ExampleNetworkResource.class, "ExampleNetworkResource", ExampleNetworkResource.CODEC);
 
         this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockPlaceEventSystem());
         this.getEntityStoreRegistry().registerSystem(new ExampleNetworkSystem.NetworkBlockBreakEventSystem());

@@ -28,6 +28,7 @@ public class ExampleCommand extends CommandBase {
     protected void executeSync(@Nonnull CommandContext ctx) {
         Ref<EntityStore> storeRef = ctx.senderAsPlayerRef();
         ExampleNetworkResource network = storeRef.getStore().getResource(ExampleNetworkResource.getResourceType());
+        System.out.println("COMMAND - hash: " + System.identityHashCode(network));
 
         ctx.sendMessage(Message.raw(network.toString()));
     }

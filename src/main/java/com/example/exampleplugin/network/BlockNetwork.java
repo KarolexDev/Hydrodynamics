@@ -1,6 +1,10 @@
 package com.example.exampleplugin.network;
 
 import com.example.exampleplugin.util.BlockFaceEnum;
+import com.example.exampleplugin.util.BlockNetworkSerialization.*;
+import com.hypixel.hytale.codec.KeyedCodec;
+import com.hypixel.hytale.codec.builder.BuilderCodec;
+import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.component.ArchetypeChunk;
 import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.math.vector.Vector3i;
@@ -11,6 +15,7 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Supplier;
 
 public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
@@ -523,4 +528,92 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     public abstract void runOnBlockAdded();
 
     public abstract void runOnBlockRemoved();
+
+    // Jede Subklasse liefert ihren eigenen Component-Codec
+    protected abstract BuilderCodec<C> getComponentCodec();
+
+    public static <C extends BlockNetworkComponent<C>, R extends BlockNetwork<C>>
+    BuilderCodec<R> createCodec(Class<R> clazz, Supplier<R> factory, BuilderCodec<C> componentCodec) {
+
+        BuilderCodec<NodeDTO<C>> nodeCodec = NodeDTO.codec(componentCodec);
+        BuilderCodec<EdgeDTO<C>> edgeCodec = EdgeDTO.codec(componentCodec);
+
+        @SuppressWarnings("unchecked")
+        ArrayCodec<NodeDTO<C>> nodeArrayCodec = (ArrayCodec<NodeDTO<C>>) (Object)
+                ArrayCodec.ofBuilderCodec(nodeCodec, NodeDTO[]::new);
+
+        @SuppressWarnings("unchecked")
+        ArrayCodec<EdgeDTO<C>> edgeArrayCodec = (ArrayCodec<EdgeDTO<C>>) (Object)
+                ArrayCodec.ofBuilderCodec(edgeCodec, EdgeDTO[]::new);
+
+        return BuilderCodec
+                .builder(clazz, factory)
+                .append(
+                        new KeyedCodec<>("Nodes", nodeArrayCodec),
+                        (r, v) -> r.deserializeNodes(v),
+                        r -> r.serializeNodes()
+                ).add()
+                .append(
+                        new KeyedCodec<>("Edges", edgeArrayCodec),
+                        (r, v) -> r.deserializeEdges(v),
+                        r -> r.serializeEdges()
+                ).add()
+                .build();
+    }
+
+    public NodeDTO<C>[] serializeNodes() {
+        @SuppressWarnings("unchecked")
+        NodeDTO<C>[] result = new NodeDTO[nodes.size()];
+        int i = 0;
+        for (Node node : nodes) {
+            NodeDTO<C> dto = new NodeDTO<>();
+            dto.blocks  = node.blocks.toArray(new Vector3i[0]);
+            dto.storage = node.storage;
+            result[i++] = dto;
+        }
+        return result;
+    }
+
+    public EdgeDTO<C>[] serializeEdges() {
+        Set<Edge> seen = new HashSet<>();
+        List<EdgeDTO<C>> result = new ArrayList<>();
+        for (Node node : nodes) {
+            for (Edge edge : node.connectedEdges) {
+                if (seen.add(edge)) {
+                    EdgeDTO<C> dto = new EdgeDTO<>();
+                    dto.from = edge.from;
+                    dto.to   = edge.to;
+                    dto.flux = edge.flux;
+                    result.add(dto);
+                }
+            }
+        }
+        @SuppressWarnings("unchecked")
+        EdgeDTO<C>[] array = new EdgeDTO[result.size()];
+        return result.toArray(array);
+    }
+
+    public void deserializeNodes(NodeDTO<C>[] nodeDTOs) {
+        clear();
+        for (NodeDTO<C> dto : nodeDTOs) {
+            Node node = new Node();
+            node.storage = dto.storage;
+            for (Vector3i pos : dto.blocks) {
+                node.blocks.add(pos);
+                nodeMap.put(pos, node);
+            }
+            nodes.add(node);
+        }
+    }
+
+    public void deserializeEdges(EdgeDTO<C>[] edgeDTOs) {
+        for (EdgeDTO<C> dto : edgeDTOs) {
+            Edge edge = new Edge(dto.from, dto.to);
+            edge.flux  = dto.flux;
+            Node fromNode = nodeMap.get(dto.from);
+            Node toNode   = nodeMap.get(dto.to);
+            if (fromNode != null) fromNode.connectedEdges.add(edge);
+            if (toNode   != null) toNode.connectedEdges.add(edge);
+        }
+    }
 }
