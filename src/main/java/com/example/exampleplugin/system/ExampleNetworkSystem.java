@@ -41,11 +41,8 @@ public class ExampleNetworkSystem {
         @Override
         public void handle(int index, @NonNull ArchetypeChunk<EntityStore> archetypeChunk, @NonNull Store<EntityStore> entityStore, @NonNull CommandBuffer<EntityStore> commandBuffer, @NonNull PlaceBlockEvent placeBlockEvent) {
             try {
-
                 World world = Universe.get().getDefaultWorld();
-                if (world == null) {
-                    return;
-                }
+                if (world == null) return;
 
                 Vector3i targetPos = placeBlockEvent.getTargetBlock();
                 int x = targetPos.getX();
@@ -53,41 +50,25 @@ public class ExampleNetworkSystem {
                 int z = targetPos.getZ();
 
                 ExampleNetworkResource network = entityStore.getResource(ExampleNetworkResource.getResourceType());
-                commandBuffer.run((store) -> {
+
+                world.execute(() -> {
                     try {
-                        ExampleNetworkResource network2 = store.getResource(ExampleNetworkResource.getResourceType());
                         BlockType bt = world.getBlockType(x, y, z);
                         Holder<ChunkStore> blockEntity = bt.getBlockEntity();
-                        if (blockEntity == null) {
-                            return;
-                        }
-                        // Break Block Event
-                        else if (Objects.equals(bt.getId(), "Empty")) {
-                            ExampleComponent component = blockEntity.getComponent(ExampleComponent.getComponentType());
-                            if (component != null) {
-                                network.onBlockRemoved(
-                                        new Vector3i(x, y, z),
-                                        world.getChunk(ChunkUtil.indexChunkFromBlock(x, z))
-                                );
-                            }
-                        }
-                        // Place Block Event
-                        else {
-                            ExampleComponent component = blockEntity.getComponent(ExampleComponent.getComponentType());
-                            if (component != null) {
-                                network.onBlockPlaced(
-                                        new Vector3i(x, y, z),
-                                        world.getChunk(ChunkUtil.indexChunkFromBlock(x, z)),
-                                        // blockEntity.getComponent(WorldChunk.getComponentType()),
-                                        new ExampleComponent()
-                                );
-                            }
-                        }
+                        if (blockEntity == null) return;
+
+                        ExampleComponent component = blockEntity.getComponent(ExampleComponent.getComponentType());
+                        if (component == null) return;
+
+                        var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
+                        network.onBlockPlaced(
+                                new Vector3i(x, y, z),
+                                chunk,
+                                new ExampleComponent()
+                        );
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                    // SignalSourceManager.updateNetwork(world, x, y, z);
-                    // SignalSourceManager.updateNeighborShapes(world, x, y, z);
                 });
             } catch (Exception e) {
                 e.printStackTrace();
@@ -107,9 +88,7 @@ public class ExampleNetworkSystem {
         public void handle(int i, @NonNull ArchetypeChunk<EntityStore> archetypeChunk, @NonNull Store<EntityStore> entityStore, @NonNull CommandBuffer<EntityStore> commandBuffer, @NonNull BreakBlockEvent breakBlockEvent) {
             try {
                 World world = Universe.get().getDefaultWorld();
-                if (world == null) {
-                    return;
-                }
+                if (world == null) return;
 
                 Vector3i targetPos = breakBlockEvent.getTargetBlock();
                 int x = targetPos.getX();
@@ -117,16 +96,24 @@ public class ExampleNetworkSystem {
                 int z = targetPos.getZ();
 
                 ExampleNetworkResource network = entityStore.getResource(ExampleNetworkResource.getResourceType());
-                commandBuffer.run((store) -> {
-                    BlockType bt = world.getBlockType(x, y, z);
-                    if (Objects.equals(bt.getId(), "Empty")) { return; }
-                    network.onBlockRemoved(
-                            new Vector3i(x, y, z),
-                            world.getChunk(ChunkUtil.indexChunkFromBlock(x, z))
-                    );
+
+                world.execute(() -> {
+                    try {
+                        BlockType bt = world.getBlockType(x, y, z);
+                        Holder<ChunkStore> blockEntity = bt.getBlockEntity();
+                        if (blockEntity != null) return;
+
+                        var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
+                        network.onBlockRemoved(
+                                new Vector3i(x, y, z),
+                                chunk
+                        );
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 });
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
         }
 
