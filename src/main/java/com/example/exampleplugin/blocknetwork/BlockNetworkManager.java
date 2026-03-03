@@ -45,24 +45,21 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
         this.factory = factory;
     }
 
-    public void onBlockPlaced(Vector3i pos, WorldChunk chunk, C storage) {
-        // Finde alle Netzwerke die an pos angrenzen
+    public void onBlockPlaced(Vector3i origin, List<Vector3i> occupiedPositions, WorldChunk chunk, C storage) {
+        // Finde alle Netzwerke die an einer der belegten Positionen angrenzen
         List<N> neighbours = networks.stream()
-                .filter(n -> n.isAdjacentTo(pos))
+                .filter(n -> occupiedPositions.stream().anyMatch(n::isAdjacentTo))
                 .toList();
 
         if (neighbours.isEmpty()) {
-            // Neues Netzwerk erstellen
             N network = factory.get();
-            network.onBlockPlaced(pos, chunk, storage);
+            network.onBlockPlaced(origin, occupiedPositions, chunk, storage);
             networks.add(network);
         } else if (neighbours.size() == 1) {
-            // Zu bestehendem Netzwerk hinzufügen
-            neighbours.getFirst().onBlockPlaced(pos, chunk, storage);
+            neighbours.getFirst().onBlockPlaced(origin, occupiedPositions, chunk, storage);
         } else {
-            // Mehrere Netzwerke verbinden → zusammenführen
             N primary = neighbours.getFirst();
-            primary.onBlockPlaced(pos, chunk, storage);
+            primary.onBlockPlaced(origin, occupiedPositions, chunk, storage);
             for (int i = 1; i < neighbours.size(); i++) {
                 primary.mergeFrom(neighbours.get(i));
                 networks.remove(neighbours.get(i));
@@ -70,16 +67,17 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
         }
     }
 
-    public void onBlockRemoved(Vector3i pos, WorldChunk chunk) {
+    public void onBlockRemoved(Vector3i origin, List<Vector3i> occupiedPositions, WorldChunk chunk) {
+        // Netzwerk über origin finden reicht – alle Positionen gehören demselben Node
         N network = networks.stream()
-                .filter(n -> n.containsBlock(pos))
+                .filter(n -> n.containsBlock(origin))
                 .findFirst()
                 .orElse(null);
 
         if (network == null) return;
 
         @SuppressWarnings("unchecked")
-        List<N> split = (List<N>) (List<?>) network.onBlockRemoved(pos, chunk);
+        List<N> split = (List<N>) (List<?>) network.onBlockRemoved(origin, occupiedPositions, chunk);
 
         if (!split.isEmpty()) {
             networks.remove(network);
