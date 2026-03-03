@@ -1,7 +1,7 @@
-package com.example.exampleplugin.network;
+package com.example.exampleplugin.blocknetwork;
 
 import com.example.exampleplugin.util.BlockFaceEnum;
-import com.example.exampleplugin.util.BlockNetworkSerialization.*;
+import com.example.exampleplugin.blocknetwork.BlockNetworkSerialization.*;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
@@ -15,22 +15,13 @@ import java.util.function.Supplier;
 
 public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("BlockNetwork[nodes=").append(nodes.size()).append("] {\n");
-        for (Node node : nodes) {
-            sb.append("  Node{blocks=").append(node.blocks.size())
-                    .append(", edges=").append(node.connectedEdges.size())
-                    .append(", storage=").append(node.storage)
-                    .append(", positions=").append(node.blocks)
-                    .append("}\n");
-        }
-        sb.append("}");
-        return sb.toString();
-    }
-
     private final Map<Vector3i, Node> nodeMap = new HashMap<>();
     private final Set<Node> nodes = new HashSet<>();
+    private final Supplier<BlockNetwork<C>> factory;
+
+    protected BlockNetwork(Supplier<BlockNetwork<C>> factory) {
+        this.factory = factory;
+    }
 
     public class UpdateWave {
 
@@ -64,25 +55,20 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 }
 
                 // Node updaten und Änderung messen
-                // TODO: CORRECT LOGIC
+                // TODO: LOGIC CAN BE IMPROVED
                 float changeRate = 0f;
-                C storageBefore = wf.current.storage.copy();
-                if (storageBefore != null) {
+                if (wf.current.storage != null) {
+                    C storageBefore = wf.current.storage.copy();
                     wf.current.update(dt);
                     changeRate = storageBefore.changeRate(wf.current.storage);
                 }
 
-                // Zu Nachbarn propagieren
                 for (Edge edge : wf.current.connectedEdges) {
                     Node neighbor = edge.other(wf.current);
-                    if (neighbor == null) { continue; } // TODO: INELEGANT!
-                    if (neighbor.equals(wf.cameFrom)) continue;
+                    if (neighbor == null || neighbor.equals(wf.cameFrom)) continue;
 
                     edge.update(dt);
-
-                    // Nachbar bestimmt selbst wie lange er warten will
-                    float delay = neighbor.computeDelay(changeRate);
-                    next.add(new Wavefront(neighbor, wf.current, delay));
+                    next.add(new Wavefront(neighbor, wf.current, neighbor.computeDelay(changeRate)));
                 }
             }
 
@@ -280,13 +266,12 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         runOnBlockAdded();
     }
 
-    public void onBlockRemoved(Vector3i pos, WorldChunk chunk) {
+    public List<BlockNetwork<C>> onBlockRemoved(Vector3i pos, WorldChunk chunk) {
         Node removedNode = nodeMap.remove(pos);
-        if (removedNode == null) return;
+        if (removedNode == null) return Collections.emptyList();
 
         removedNode.blocks.remove(pos);
 
-        // Alle Edges die diesen Block berühren sammeln und von Nachbarn entfernen
         Set<Edge> removedEdges = new HashSet<>();
         Set<Node> affectedNeighbours = new LinkedHashSet<>();
         for (Edge e : removedNode.connectedEdges) {
@@ -300,17 +285,17 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             }
         }
         removedNode.connectedEdges.removeAll(removedEdges);
-
         nodes.remove(removedNode);
 
+        List<BlockNetwork<C>> splitNetworks = new ArrayList<>();
         Set<Node> waveTriggers = new LinkedHashSet<>();
 
-        // Verbleibende Blöcke des alten Nodes per BFS in Segmente aufteilen
         if (!removedNode.blocks.isEmpty()) {
-            // Temporär aus nodeMap entfernen für saubere BFS
             for (Vector3i b : removedNode.blocks) nodeMap.remove(b);
 
             Set<Vector3i> unvisited = new LinkedHashSet<>(removedNode.blocks);
+            List<Node> segments = new ArrayList<>();
+
             while (!unvisited.isEmpty()) {
                 Vector3i seed = unvisited.iterator().next();
                 unvisited.remove(seed);
@@ -337,7 +322,6 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 C[] parts = removedNode.storage.partition(seg.blocks.size(), removedNode.blocks.size());
                 seg.storage = parts[0];
 
-                // Edges des alten Nodes die zu diesem Segment gehören übernehmen
                 for (Edge e : removedNode.connectedEdges) {
                     if (seg.blocks.contains(e.from) || seg.blocks.contains(e.to))
                         seg.connectedEdges.add(e);
@@ -345,12 +329,39 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
                 nodes.add(seg);
                 waveTriggers.add(seg);
+                segments.add(seg);
+            }
+
+            // Mehr als ein Segment → Netzwerk wurde gespalten
+            if (segments.size() > 1) {
+                for (Node seg : segments) {
+                    BlockNetwork<C> newNetwork = factory.get();
+                    NodeDTO<C>[] nodeDTOs = new NodeDTO[]{new NodeDTO<>()};
+                    nodeDTOs[0].blocks = seg.blocks.toArray(new Vector3i[0]);
+                    nodeDTOs[0].storage = seg.storage;
+
+                    Set<Edge> seen = new HashSet<>();
+                    List<EdgeDTO<C>> edgeList = new ArrayList<>();
+                    for (Edge e : seg.connectedEdges) {
+                        if (seen.add(e)) {
+                            EdgeDTO<C> dto = new EdgeDTO<>();
+                            dto.from = e.from;
+                            dto.to = e.to;
+                            dto.flux = e.flux;
+                            edgeList.add(dto);
+                        }
+                    }
+                    @SuppressWarnings("unchecked")
+                    EdgeDTO<C>[] edgeDTOs = edgeList.toArray(new EdgeDTO[0]);
+
+                    newNetwork.deserializeNodes(nodeDTOs);
+                    newNetwork.deserializeEdges(edgeDTOs);
+                    splitNetworks.add(newNetwork);
+                }
             }
         }
 
-        // Betroffene Nachbarn prüfen: ggf. zusammenführen wenn Junction weggefallen
         for (Node neighbour : affectedNeighbours) {
-            // Nachbar könnte inzwischen durch BFS oben ersetzt worden sein
             Vector3i representativePos = neighbour.blocks.iterator().next();
             Node currentNeighbour = nodeMap.get(representativePos);
             if (currentNeighbour == null) continue;
@@ -358,11 +369,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             waveTriggers.add(currentNeighbour);
 
             byte neighbourMask = BlockFaceEnum.readFromWorld(chunk, representativePos);
-            int connectionCount = Integer.bitCount(neighbourMask & 0xFF);
-
-            // Hatte der Nachbar genau 2 Verbindungen übrig → war Junction, ist jetzt Pipe
-            // → prüfen ob die zwei verbleibenden Nachbarn zusammengeführt werden können
-            if (connectionCount != 2) continue;
+            if (Integer.bitCount(neighbourMask & 0xFF) != 2) continue;
 
             Node pipeNeighbourA = null;
             Node pipeNeighbourB = null;
@@ -377,9 +384,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
             if (pipeNeighbourA != null && pipeNeighbourB != null && pipeNeighbourA != pipeNeighbourB) {
                 mergeNodes(pipeNeighbourA, pipeNeighbourB, representativePos, currentNeighbour.storage);
-                Node mergedNode = nodeMap.get(representativePos);
                 waveTriggers.remove(currentNeighbour);
-                waveTriggers.add(mergedNode);
+                waveTriggers.add(nodeMap.get(representativePos));
             }
         }
 
@@ -387,6 +393,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             activeWaves.add(new UpdateWave(trigger));
         }
         runOnBlockRemoved();
+
+        return splitNetworks;
     }
 
     /** Legt einen neuen Node an und registriert alle seine Blöcke in nodeMap. */
@@ -669,74 +677,5 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         deserializeNodes(mergedNodes);
         deserializeEdges(mergedEdges);
-    }
-
-    public List<BlockNetwork<C>> getSplitNetworks() {
-        if (nodes.size() <= 1) return Collections.emptyList();
-
-        // BFS um zusammenhängende Node-Gruppen zu finden
-        Set<Node> unvisited = new HashSet<>(nodes);
-        List<Set<Node>> groups = new ArrayList<>();
-
-        while (!unvisited.isEmpty()) {
-            Set<Node> group = new HashSet<>();
-            Queue<Node> queue = new ArrayDeque<>();
-            Node start = unvisited.iterator().next();
-            queue.add(start);
-            unvisited.remove(start);
-
-            while (!queue.isEmpty()) {
-                Node current = queue.poll();
-                group.add(current);
-                for (Edge edge : current.connectedEdges) {
-                    Node neighbour = edge.other(current);
-                    if (unvisited.remove(neighbour)) {
-                        queue.add(neighbour);
-                    }
-                }
-            }
-            groups.add(group);
-        }
-
-        // Nur eine Gruppe → kein Split
-        if (groups.size() <= 1) return Collections.emptyList();
-
-        // Für jede Gruppe ein neues Netzwerk erstellen
-        List<BlockNetwork<C>> result = new ArrayList<>();
-        for (Set<Node> group : groups) {
-            BlockNetwork<C> newNetwork = /* factory needed */ null; // TODO: FACTORY NEEDED!!
-            // Nodes serialisieren die zu dieser Gruppe gehören
-            @SuppressWarnings("unchecked")
-            NodeDTO<C>[] nodeDTOs = new NodeDTO[group.size()];
-            int i = 0;
-            for (Node node : group) {
-                NodeDTO<C> dto = new NodeDTO<>();
-                dto.blocks = node.blocks.toArray(new Vector3i[0]);
-                dto.storage = node.storage;
-                nodeDTOs[i++] = dto;
-            }
-            // Edges serialisieren die zu dieser Gruppe gehören
-            Set<Edge> seen = new HashSet<>();
-            List<EdgeDTO<C>> edgeList = new ArrayList<>();
-            for (Node node : group) {
-                for (Edge edge : node.connectedEdges) {
-                    if (seen.add(edge)) {
-                        EdgeDTO<C> dto = new EdgeDTO<>();
-                        dto.from = edge.from;
-                        dto.to = edge.to;
-                        dto.flux = edge.flux;
-                        edgeList.add(dto);
-                    }
-                }
-            }
-            @SuppressWarnings("unchecked")
-            EdgeDTO<C>[] edgeDTOs = edgeList.toArray(new EdgeDTO[0]);
-
-            newNetwork.deserializeNodes(nodeDTOs);
-            newNetwork.deserializeEdges(edgeDTOs);
-            result.add(newNetwork);
-        }
-
-        return result;
     }
 }

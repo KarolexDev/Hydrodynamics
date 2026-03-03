@@ -1,4 +1,4 @@
-package com.example.exampleplugin.network;
+package com.example.exampleplugin.blocknetwork;
 
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
@@ -17,13 +17,28 @@ import java.util.function.Supplier;
 
 public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends BlockNetwork<C>> implements Resource<EntityStore> {
 
-    final List<N> networks = new ArrayList<>();
+    protected final List<N> networks = new ArrayList<>();
     private final Supplier<N> factory;
 
     public void tick(float dt, World world) {
         for (N network : networks) {
             network.tick(dt, world);
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("BlockNetworkManager[").append(networks.size()).append(" networks]");
+        for (int i = 0; i < networks.size(); i++) {
+            sb.append("\n  [").append(i).append("] ").append(networks.get(i));
+        }
+        return sb.toString();
+    }
+
+    public void clear() {
+        networks.forEach(N::clear);
+        networks.clear();
     }
 
     public BlockNetworkManager(Supplier<N> factory) {
@@ -63,19 +78,15 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
 
         if (network == null) return;
 
-        network.onBlockRemoved(pos, chunk);
-
-        // Wenn das Netzwerk durch das Entfernen gesplittet wurde,
-        // die neuen Teilnetzwerke als separate Instanzen registrieren
         @SuppressWarnings("unchecked")
-        List<N> split = (List<N>) (List<?>) network.getSplitNetworks();
+        List<N> split = (List<N>) (List<?>) network.onBlockRemoved(pos, chunk);
+
         if (!split.isEmpty()) {
             networks.remove(network);
             networks.addAll(split);
         }
 
-        // Leere Netzwerke entfernen
-        networks.removeIf(n -> n.isEmpty());
+        networks.removeIf(BlockNetwork::isEmpty);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package com.example.exampleplugin.util;
+package com.example.exampleplugin.blocknetwork;
 
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;

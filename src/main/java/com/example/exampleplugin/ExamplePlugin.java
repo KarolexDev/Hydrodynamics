@@ -1,7 +1,7 @@
 package com.example.exampleplugin;
 
-import com.example.exampleplugin.command.ClearNetworkCommand;
-import com.example.exampleplugin.command.ExampleCommand;
+import com.example.exampleplugin.command.ClearAllBlockNetworks;
+import com.example.exampleplugin.command.ShowBlockNetworks;
 import com.example.exampleplugin.resource.ExampleNetworkResource;
 import com.example.exampleplugin.component.ExampleComponent;
 import com.example.exampleplugin.interaction.ConfigurePipeInteraction;
@@ -33,8 +33,8 @@ public class ExamplePlugin extends JavaPlugin {
 
     @Override
     protected void setup() {
-        this.getCommandRegistry().registerCommand(new ExampleCommand(this.getName(), this.getManifest().getVersion().toString()));
-        this.getCommandRegistry().registerCommand(new ClearNetworkCommand(this.getName(), this.getManifest().getVersion().toString()));
+        this.getCommandRegistry().registerCommand(new ShowBlockNetworks());
+        this.getCommandRegistry().registerCommand(new ClearAllBlockNetworks());
 
         this.exampleComponentType = this.getChunkStoreRegistry().registerComponent(ExampleComponent.class, "ExampleComponent", ExampleComponent.CODEC);
 

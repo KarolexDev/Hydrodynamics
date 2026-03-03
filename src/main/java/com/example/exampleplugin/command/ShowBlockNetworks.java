@@ -10,25 +10,16 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 import javax.annotation.Nonnull;
 
-/**
- * This is an example command that will simply print the name of the plugin in chat when used.
- */
-public class ExampleCommand extends CommandBase {
-    private final String pluginName;
-    private final String pluginVersion;
-
-    public ExampleCommand(String pluginName, String pluginVersion) {
-        super("blockNetwork", "Prints a test message from the " + pluginName + " plugin.");
-        this.setPermissionGroup(GameMode.Adventure); // Allows the command to be used by anyone, not just OP
-        this.pluginName = pluginName;
-        this.pluginVersion = pluginVersion;
+public class ShowBlockNetworks extends CommandBase {
+    public ShowBlockNetworks() {
+        super("showbn", "Prints all block networks in chat.");
+        this.setPermissionGroup(GameMode.Creative);
     }
 
     @Override
     protected void executeSync(@Nonnull CommandContext ctx) {
         Ref<EntityStore> storeRef = ctx.senderAsPlayerRef();
         ExampleNetworkResource network = storeRef.getStore().getResource(ExampleNetworkResource.getResourceType());
-        System.out.println("COMMAND - hash: " + System.identityHashCode(network));
 
         ctx.sendMessage(Message.raw(network.toString()));
     }

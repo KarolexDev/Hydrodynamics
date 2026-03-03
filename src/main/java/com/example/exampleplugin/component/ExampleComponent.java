@@ -1,7 +1,7 @@
 package com.example.exampleplugin.component;
 
 import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.network.BlockNetworkComponent;
+import com.example.exampleplugin.blocknetwork.BlockNetworkComponent;
 import com.hypixel.hytale.codec.Codec;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
@@ -59,9 +59,7 @@ public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>
     }
 
     @Override
-    public void onWorldUpdate(Vector3i pos, World world) {
-
-    }
+    public void onWorldUpdate(Vector3i pos, World world) {}
 
     @Override
     public ExampleComponent copy() {

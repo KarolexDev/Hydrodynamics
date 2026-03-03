@@ -2,8 +2,8 @@ package com.example.exampleplugin.resource;
 
 import com.example.exampleplugin.ExamplePlugin;
 import com.example.exampleplugin.component.ExampleComponent;
-import com.example.exampleplugin.network.BlockNetwork;
-import com.example.exampleplugin.network.BlockNetworkManager;
+import com.example.exampleplugin.blocknetwork.BlockNetwork;
+import com.example.exampleplugin.blocknetwork.BlockNetworkManager;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
@@ -13,6 +13,9 @@ public class ExampleNetworkResource extends BlockNetworkManager<ExampleComponent
         implements Resource<EntityStore> {
 
     public static class ExampleNetwork extends BlockNetwork<ExampleComponent> {
+        public ExampleNetwork() {
+            super(ExampleNetwork::new);
+        }
 
         @Override
         public void runOnBlockAdded() {}
@@ -47,6 +50,13 @@ public class ExampleNetworkResource extends BlockNetworkManager<ExampleComponent
 
     @Override
     public @Nullable Resource<EntityStore> clone() {
-        return null;
+        ExampleNetworkResource clone = new ExampleNetworkResource();
+        for (ExampleNetwork network : networks) {
+            ExampleNetwork clonedNetwork = new ExampleNetwork();
+            clonedNetwork.deserializeNodes(network.serializeNodes());
+            clonedNetwork.deserializeEdges(network.serializeEdges());
+            clone.networks.add(clonedNetwork);
+        }
+        return clone;
     }
 }
