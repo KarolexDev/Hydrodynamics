@@ -28,6 +28,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         builder = (BuilderCodec.Builder<GasNetworkComponent>) builder.append(new KeyedCodec("InternalPressure",Codec.DOUBLE),                          (c, v) -> c.internalPressure= v, (c) -> c.internalPressure).add();
         builder = (BuilderCodec.Builder<GasNetworkComponent>) builder.append(new KeyedCodec("GenerationRate",  Codec.DOUBLE),                          (c, v) -> c.generationRate  = v, (c) -> c.generationRate).add();
         builder = (BuilderCodec.Builder<GasNetworkComponent>) builder.append(new KeyedCodec("ConsumptionRate", Codec.DOUBLE),                          (c, v) -> c.consumptionRate = v, (c) -> c.consumptionRate).add();
+        builder = (BuilderCodec.Builder<GasNetworkComponent>) builder.append(new KeyedCodec("IsExtendable", Codec.BOOLEAN),                          (c, v) -> c.isExtendable = v, (c) -> c.isExtendable).add();
         CODEC = builder.build();
     }
 
@@ -41,12 +42,13 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public double internalPressure; // Pa  – konstanter Druck für SOURCE/SINK
     public double generationRate;   // mol/s – für SOURCE
     public double consumptionRate;  // mol/s – für SINK
+    public boolean isExtendable;
 
     public GasNetworkComponent() {
-        this(0, 0, GasNetworkType.TANK, 0, 0, 0, 0);
+        this(0, 0, GasNetworkType.TANK, 0, 0, 0, 0, false);
     }
 
-    public GasNetworkComponent(double amount, double energy, GasNetworkType type, double volume, double internalPressure, double generationRate, double consumptionRate) {
+    public GasNetworkComponent(double amount, double energy, GasNetworkType type, double volume, double internalPressure, double generationRate, double consumptionRate, boolean isExtendable) {
         this.amount = amount;
         this.energy = energy;
         this.type = type;
@@ -54,13 +56,14 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         this.internalPressure = internalPressure;
         this.generationRate = generationRate;
         this.consumptionRate = consumptionRate;
+        this.isExtendable = isExtendable;
     }
 
 
     // Physics
     /** Ideale Gasgleichung p = nRT/V, nur für TANK relevant */
     public double pressure() {
-        if (type != GasNetworkType.TANK || volume <= 0) return internalPressure;
+        if ((type != GasNetworkType.PIPE) && (type != GasNetworkType.TANK) || volume <= 0) return internalPressure;
         return (amount * R * temperature()) / volume;
     }
 
@@ -83,7 +86,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         double dp    = pFrom - pTo;
 
         switch (from.type) {
-            case TANK -> {
+            case TANK, PIPE -> {
                 // Normaler Druckausgleich proportional zur Druckdifferenz
                 double conductance = ((from.volume + to.volume) / 2.0) * 0.01;
                 flux.amount = dp * conductance;
@@ -113,10 +116,17 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     }
 
     @Override
-    public GasNetworkComponent add(GasNetworkComponent other) {
+    public GasNetworkComponent mergeComponents(GasNetworkComponent other) {
         amount += other.amount;
         energy += other.energy;
         volume += other.volume; // extensiv → wird bei Node-Erweiterung addiert
+        return this;
+    }
+
+    @Override
+    public GasNetworkComponent add(GasNetworkComponent flux) {
+        amount += flux.amount;
+        energy += flux.energy;
         return this;
     }
 
@@ -197,9 +207,22 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     }
 
     @Override
+    public boolean shouldMerge(GasNetworkComponent other) {
+        return this.isExtendable && other.isExtendable && (this.type == other.type);    // TODO: could make stricter, i.e. require same BlockType. Temp. solution only!
+    }
+
+    public boolean isPipe() {
+        return this.type == GasNetworkType.PIPE;
+    }
+
+    @Override
     public @Nullable Component<ChunkStore> clone() {
         return copy();
     }
 
     public static ComponentType<ChunkStore, GasNetworkComponent> getComponentType() { return ExamplePlugin.getInstance().getGasNetworkComponentType(); }
+
+    public String toString() {
+        return "Amount: " + this.amount + "\nEnergy: " + this.energy;
+    }
 }

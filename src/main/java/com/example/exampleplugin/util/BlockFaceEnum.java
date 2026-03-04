@@ -8,6 +8,8 @@ import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.connectedblocks.*;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -111,5 +113,16 @@ public class BlockFaceEnum {
             mask = (byte) (mask | f);
         }
         return mask;
+    }
+
+    public static List<Vector3i> getConnections(WorldChunk chunk, Vector3i pos) {
+        byte mask = readFromWorld(chunk, pos);
+        List<Vector3i> result = new ArrayList<>();
+        for (int i = 0; i < FACE_BITS.length; i++) {
+            if ((mask & FACE_BITS[i]) != 0) {
+                result.add(new Vector3i(pos).add(FACE_OFFSETS[i]));
+            }
+        }
+        return result;
     }
 }

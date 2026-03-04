@@ -49,10 +49,9 @@
     "Material": "Solid",
     "DrawType": "Model",
     "Opacity": "Transparent",
-    "CustomModel": "Resources/Debug_Pipes/debug_pipe_disconnected.blockymodel",
     "CustomModelTexture": [
       {
-        "Texture": "Resources/Debug_Pipes/debug_pipe_disconnected.png",
+        "Texture": "Resources/Debug_Blocks/debug_sink.png",
         "Weight": 1
       }
     ],

@@ -35,12 +35,17 @@ public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>
     }
 
     @Override
+    public ExampleComponent add(ExampleComponent flux) {
+        return null;
+    }
+
+    @Override
     public ExampleComponent del(ExampleComponent flux) {
         return this;
     }
 
     @Override
-    public ExampleComponent add(ExampleComponent flux) {
+    public ExampleComponent mergeComponents(ExampleComponent flux) {
         return this;
     }
 
@@ -74,6 +79,11 @@ public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>
     @Override
     public float computeDelay(float changeRate) {
         return 0;
+    }
+
+    @Override
+    public boolean shouldMerge(ExampleComponent other) {
+        return false;
     }
 
     @Override

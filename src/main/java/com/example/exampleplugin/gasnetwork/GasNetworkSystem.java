@@ -33,6 +33,8 @@ public class GasNetworkSystem {
         }
     }
 
+    //public static class NetworkBlockUpdatedEventSystem extends EntityEventSystem<ChunkStore, Event>
+
     public static class NetworkBlockPlaceEventSystem extends EntityEventSystem<EntityStore, PlaceBlockEvent> {
         public NetworkBlockPlaceEventSystem() { super(PlaceBlockEvent.class); }
 
@@ -62,7 +64,6 @@ public class GasNetworkSystem {
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
                         network.onBlockPlaced(
                                 new Vector3i(x, y, z),
-                                occupiedPositions,
                                 chunk,
                                 component
                         );
@@ -109,7 +110,6 @@ public class GasNetworkSystem {
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
                         network.onBlockRemoved(
                                 new Vector3i(x, y, z),
-                                occupiedPositions,
                                 chunk
                         );
                     } catch (Exception e) {

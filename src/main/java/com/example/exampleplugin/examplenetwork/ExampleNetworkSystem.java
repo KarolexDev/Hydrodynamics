@@ -62,7 +62,6 @@ public class ExampleNetworkSystem {
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
                         network.onBlockPlaced(
                                 new Vector3i(x, y, z),
-                                occupiedPositions,
                                 chunk,
                                 new ExampleComponent()
                         );
@@ -108,7 +107,6 @@ public class ExampleNetworkSystem {
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
                         network.onBlockRemoved(
                                 new Vector3i(x, y, z),
-                                occupiedPositions,
                                 chunk
                         );
                     } catch (Exception e) {

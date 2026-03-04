@@ -1,7 +1,8 @@
 package com.example.exampleplugin.interaction;
 
 import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.examplenetwork.ExampleComponent;
+import com.example.exampleplugin.gasnetwork.GasNetworkComponent;
+import com.example.exampleplugin.gasnetwork.GasNetworkResource;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
@@ -57,13 +58,15 @@ public class ConfigurePipeInteraction extends SimpleInteraction {
             Ref<ChunkStore> componentRef = worldChunk.getBlockComponentEntity(targetVec.x, targetVec.y, targetVec.z);
             if (componentRef == null) { return; }
 
-            if (world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getExampleComponentType()) == null) { return; }
-            ExampleComponent exampleComponent = (ExampleComponent) world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getExampleComponentType());
+            if (world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getGasNetworkComponentType()) == null) { return; }
+            GasNetworkComponent exampleComponent = (GasNetworkComponent) world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getGasNetworkComponentType());
+
+            GasNetworkResource network = store.getResource(GasNetworkResource.getResourceType());
 
             player.sendMessage(Message.raw("Interacted with this custom interaction code..."));
 
             if(exampleComponent != null) {
-                // Do smth with ExampleComponent...
+                player.sendMessage(Message.raw(network.getComponent(targetVec).toString()));
             } else {
                 player.sendMessage(Message.raw("This block does NOT have a Thermal Component!"));
             }

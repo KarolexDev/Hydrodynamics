@@ -39,8 +39,9 @@
         "GasNetworkComponent": {
           "InitialAmount": 100,
           "InitialEnergy": 100,
-          "Type": "Tank",
-          "Volume": 100
+          "Type": "Pipe",
+          "Volume": 100,
+          "IsExtendable": true
         }
       }
     },

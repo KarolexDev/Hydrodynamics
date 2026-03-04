@@ -39,22 +39,25 @@
         "GasNetworkComponent": {
           "InitialAmount": 100,
           "InitialEnergy": 100,
-          "Type": "Source",
-          "Volume": 100,
+          "Type": "Tank",
+          "Volume": 1000,
           "InternalPressure": 100,
-          "GenerationRate": 100
+          "ConsumptionRate": 100
         }
       }
     },
     "Material": "Solid",
     "DrawType": "Model",
     "Opacity": "Transparent",
+    "CustomModel": "Resources/Debug_Blocks/debug_tank.blockymodel",
     "CustomModelTexture": [
       {
-        "Texture": "Resources/Debug_Blocks/debug_source.png",
+        "Texture": "Resources/Debug_Blocks/debug_tank.png",
         "Weight": 1
       }
     ],
+    "HitboxType": "Debug_Tank",
+    "VariantRotation": "NESW",
     "Group": "Wood",
     "Flags": {},
     "Gathering": {
@@ -70,30 +73,30 @@
       "Type": "CustomTemplate",
       "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
       "TemplateShapeBlockPatterns": {
-        "Disconnected": "Debug_Source",
-        "StubUp": "*Debug_Source",
-        "StubDown": "*Debug_Source",
-        "StubSide": "*Debug_Source",
-        "IFlat": "*Debug_Source",
-        "IVert": "*Debug_Source",
-        "LUp": "*Debug_Source",
-        "LDown": "*Debug_Source",
-        "LFlat": "*Debug_Source",
-        "TUp": "*Debug_Source",
-        "TDown": "*Debug_Source",
-        "TFlat": "*Debug_Source",
-        "TSide": "*Debug_Source",
-        "TCurvedUp": "*Debug_Source",
-        "TCurvedDown": "*Debug_Source",
-        "XUp": "*Debug_Source",
-        "XDown": "*Debug_Source",
-        "XCurved": "*Debug_Source",
-        "XFlat": "*Debug_Source",
-        "XSide": "*Debug_Source",
-        "XTUp": "*Debug_Source",
-        "XTDown": "*Debug_Source",
-        "XTSide": "*Debug_Source",
-        "FullyConnected": "*Debug_Source"
+        "Disconnected": "Debug_Tank",
+        "StubUp": "*Debug_Tank",
+        "StubDown": "*Debug_Tank",
+        "StubSide": "*Debug_Tank",
+        "IFlat": "*Debug_Tank",
+        "IVert": "*Debug_Tank",
+        "LUp": "*Debug_Tank",
+        "LDown": "*Debug_Tank",
+        "LFlat": "*Debug_Tank",
+        "TUp": "*Debug_Tank",
+        "TDown": "*Debug_Tank",
+        "TFlat": "*Debug_Tank",
+        "TSide": "*Debug_Tank",
+        "TCurvedUp": "*Debug_Tank",
+        "TCurvedDown": "*Debug_Tank",
+        "XUp": "*Debug_Tank",
+        "XDown": "*Debug_Tank",
+        "XCurved": "*Debug_Tank",
+        "XFlat": "*Debug_Tank",
+        "XSide": "*Debug_Tank",
+        "XTUp": "*Debug_Tank",
+        "XTDown": "*Debug_Tank",
+        "XTSide": "*Debug_Tank",
+        "FullyConnected": "*Debug_Tank"
       }
     }
   },
