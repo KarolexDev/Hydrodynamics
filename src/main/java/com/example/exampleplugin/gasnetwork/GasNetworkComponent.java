@@ -125,17 +125,15 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     @Override
     public GasNetworkComponent add(GasNetworkComponent flux) {
-        amount += flux.amount;
-        energy += flux.energy;
+        amount = Math.max(0, amount + flux.amount);
+        energy = Math.max(0, energy + flux.energy);
         return this;
     }
 
     @Override
     public GasNetworkComponent del(GasNetworkComponent flux) {
-        amount -= flux.amount;
-        energy -= flux.energy;
-        assert amount >= 0;
-        assert energy >= 0;
+        amount = Math.max(0, amount - flux.amount);
+        energy = Math.max(0, energy - flux.energy);
         return this;
     }
 

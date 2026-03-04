@@ -15,6 +15,9 @@ import java.util.function.Supplier;
 
 public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
+    private static final float MIN_UPDATE_INTERVAL = 0.05f;  // max. 20 Updates/s bei hoher Aktivität
+    private static final float MAX_UPDATE_INTERVAL = 5.0f;   // min. 1 Update alle 5s bei Stillstand
+
     private final Map<Vector3i, Node> nodeMap = new HashMap<>();
     private final Set<Node> nodes = new HashSet<>();
     private final Supplier<BlockNetwork<C>> factory;
@@ -40,12 +43,14 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         }
 
         private final List<Wavefront> wavefronts = new CopyOnWriteArrayList<>();
+        private static int globalWaveTick = 0;
 
         public UpdateWave(Node startNode) {
             wavefronts.add(new Wavefront(startNode, null, 0));
         }
 
         public void tick(float dt) {
+            int currentWaveTick = globalWaveTick++;
             List<Wavefront> next = new ArrayList<>();
 
             for (Wavefront wf : wavefronts) {
@@ -58,8 +63,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 float changeRate = 0f;
                 if (wf.current.storage != null) {
                     C storageBefore = wf.current.storage.copy();
-                    wf.current.update(dt);
+                    wf.current.update(dt, currentWaveTick); // NEU: mit waveTick
                     changeRate = storageBefore.changeRate(wf.current.storage);
+                    wf.current.recordChangeRate(changeRate);
                 }
 
                 for (Edge edge : wf.current.connectedEdges) {
@@ -92,8 +98,11 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         }
         activeWaves.removeIf(UpdateWave::isFinished);
 
-        for (Node node : nodes) {
+        for (Node node : nodes) {   // TODO: ITERATES THROUGH ALL NODES??? THAT IS STUPID
+            node.timeSinceLastUpdate += dt;
+
             if (node.triggersUpdates()) {
+                node.timeSinceLastUpdate = 0f;
                 activeWaves.add(new UpdateWave(node));
             }
 
@@ -114,7 +123,14 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         final Set<Vector3i> blocks = new LinkedHashSet<>();
         final Set<Edge> connectedEdges = new HashSet<>();
 
-        Node update(float dt) {
+        private float timeSinceLastUpdate = 0f;
+        private float lastChangeRate = 0f;
+        private int lastAppliedWaveTick = -1; // NEU
+
+        Node update(float dt, int waveTick) {
+            if (lastAppliedWaveTick == waveTick) return this; // bereits in diesem Tick angewendet
+            lastAppliedWaveTick = waveTick;
+
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
                     storage.del(edge.flux);
@@ -125,8 +141,24 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             return this;
         }
 
-        public boolean triggersUpdates() { return false; }
-        public int getUpdateTickRate()   { return 1; }
+        /** Wird von UpdateWave nach jedem Update aufgerufen um die Änderungsrate zu speichern. */
+        void recordChangeRate(float changeRate) {
+            this.lastChangeRate = changeRate;
+        }
+
+        /** Updateintervall in Sekunden, abhängig von der letzten Änderungsrate. */
+        float computeUpdateInterval() {
+            if (lastChangeRate <= 0f) return MAX_UPDATE_INTERVAL;
+            // Intervall ist umgekehrt proportional zur Änderungsrate,
+            // geclampt zwischen MIN und MAX
+            return Math.clamp(MIN_UPDATE_INTERVAL / lastChangeRate, MIN_UPDATE_INTERVAL, MAX_UPDATE_INTERVAL);
+        }
+
+        public boolean triggersUpdates() {
+            return timeSinceLastUpdate >= computeUpdateInterval();
+        }
+
+        public int getUpdateTickRate() { return 1; }
 
         public float computeDelay(float changeRate) {
             return storage.computeDelay(changeRate);
@@ -149,7 +181,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             Node fromNode = nodeMap.get(from);
             Node toNode   = nodeMap.get(to);
             if (fromNode != null && toNode != null)
-                flux.calculateFlux(fromNode.storage, toNode.storage);
+                flux = flux.calculateFlux(fromNode.storage, toNode.storage);
             return this;
         }
 
@@ -164,7 +196,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     // ─── onBlockPlaced ───────────────────────────────────────────────────────
     // SEEMS RIGHT??
-    // ─── onBlockPlaced ───────────────────────────────────────────────────────
+    // TODO: Nvm, may need to roll back... -.-
 
     public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage) {
         Set<Vector3i> occupiedSet = buildOccupiedSet(origin, chunk);
@@ -330,8 +362,6 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         return splits;
     }
-
-    // ─── onBlockRemoved ──────────────────────────────────────────────────────
 
     // ─── onBlockRemoved ──────────────────────────────────────────────────────
 
