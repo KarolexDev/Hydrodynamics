@@ -164,168 +164,187 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     // ─── onBlockPlaced ───────────────────────────────────────────────────────
     // SEEMS RIGHT??
-    public void onBlockPlaced(Vector3i pos, List<Vector3i> connections, WorldChunk chunk, C storage) {
+    // ─── onBlockPlaced ───────────────────────────────────────────────────────
 
-        if (nodeMap.containsKey(pos)) {
-            throw new IllegalStateException("Block position already occupied: " + pos);
+    public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage) {
+        Set<Vector3i> occupiedSet = buildOccupiedSet(origin, chunk);
+        registerNode(occupiedSet, storage);
+        connectNewNode(origin, occupiedSet, chunk, storage);
+        runOnBlockAdded();
+    }
+
+    private Set<Vector3i> buildOccupiedSet(Vector3i origin, WorldChunk chunk) {
+        return BlockFaceEnum.getOccupiedPositions(chunk, origin);
+    }
+
+    private Node registerNode(Set<Vector3i> occupiedSet, C storage) {
+        for (Vector3i p : occupiedSet)
+            if (nodeMap.containsKey(p))
+                throw new IllegalStateException("Block position already occupied: " + p);
+
+        Node node = new Node();
+        node.storage = storage;
+        for (Vector3i p : occupiedSet) {
+            node.blocks.add(new Vector3i(p));
+            nodeMap.put(new Vector3i(p), node);
         }
+        nodes.add(node);
+        return node;
+    }
 
-        Node newNode = new Node();
-        newNode.blocks.add(new Vector3i(pos));
-        newNode.storage = storage;
-        nodeMap.put(new Vector3i(pos), newNode);
-        nodes.add(newNode);
-
+    private void connectNewNode(Vector3i origin, Set<Vector3i> occupiedSet, WorldChunk chunk, C storage) {
+        Node newNode = nodeMap.get(origin);
         Set<Node> waveTriggers = new LinkedHashSet<>();
         waveTriggers.add(newNode);
 
-        for (Vector3i connPos : connections) {
-            Node neighbour = nodeMap.get(connPos);
-            if (neighbour == null || neighbour == newNode) continue;
+        int totalExternalConns = countExternalConnections(occupiedSet, chunk);
+        Set<Vector3i> processedConnPos = new HashSet<>();
 
-            // Hat der Nachbar seinerseits eine Verbindung zurück?
-            List<Vector3i> neighbourConnections = BlockFaceEnum.getConnections(chunk, connPos);
-            boolean connected = neighbourConnections.stream().anyMatch(nc -> nc.equals(pos));
-            if (!connected) continue;
+        for (Vector3i blockPos : occupiedSet) {
+            for (Vector3i connPos : BlockFaceEnum.getConnections(chunk, blockPos)) {
+                if (occupiedSet.contains(connPos)) continue;
+                if (!processedConnPos.add(connPos)) continue;
 
-            // Aktuellen newNode neu auflösen, da er durch einen Merge ersetzt worden sein könnte
-            newNode = nodeMap.get(pos);
+                Node neighbour = nodeMap.get(connPos);
+                if (neighbour == null || neighbour == nodeMap.get(origin)) continue;
 
-            if (storage.shouldMerge(neighbour.storage)) {
-                if (storage.isPipe() && neighbour.storage.isPipe()) {
-                    if (connections.size() <= 2 && neighbourConnections.size() <= 2) {
-                        mergeInto(neighbour, newNode);
-                        newNode = nodeMap.get(pos);
-                        waveTriggers.clear();
-                        waveTriggers.add(newNode);
-                    } else {
-                        // Junction → Nachbar splitten falls er selbst ein Pipe-Node ist
-                        if (neighbourConnections.size() > 2) {
-                            splitNode(connPos, chunk);
-                        }
-                        addEdge(pos, connPos, storage);
-                        waveTriggers.add(nodeMap.get(connPos));
-                    }
-                } else {
-                    mergeInto(neighbour, newNode);
-                    newNode = nodeMap.get(pos);
-                    waveTriggers.clear();
-                    waveTriggers.add(newNode);
-                }
-            } else {
-                addEdge(pos, connPos, storage);
-                waveTriggers.add(neighbour);
+                List<Vector3i> neighbourConns = BlockFaceEnum.getConnections(chunk, connPos);
+                if (neighbourConns.stream().noneMatch(occupiedSet::contains)) continue;
+
+                // newNode nach jedem möglichen Merge neu auflösen
+                Node currentNew = nodeMap.get(origin);
+                processConnection(origin, connPos, currentNew, neighbour,
+                        storage, totalExternalConns, neighbourConns, waveTriggers, chunk);
             }
         }
 
         for (Node trigger : waveTriggers) activeWaves.add(new UpdateWave(trigger));
-        runOnBlockAdded();
     }
 
-    // ─── onBlockRemoved ──────────────────────────────────────────────────────
+    private void processConnection(Vector3i origin, Vector3i connPos,
+                                   Node newNode, Node neighbour, C storage,
+                                   int newConnCount, List<Vector3i> neighbourConns,
+                                   Set<Node> waveTriggers,
+                                   WorldChunk chunk) {
+        if (storage.shouldMerge(neighbour.storage)) {
+            if (storage.isPipe() && neighbour.storage.isPipe()) {
+                if (newConnCount <= 2 && neighbourConns.size() <= 2) {
+                    mergeInto(neighbour, newNode);
+                    waveTriggers.clear();
+                    waveTriggers.add(nodeMap.get(origin));
+                } else {
+                    if (neighbourConns.size() > 2) splitNode(connPos, chunk); // chunk fehlt hier noch → weiter unten
+                    addEdge(origin, connPos, storage);
+                    waveTriggers.add(nodeMap.get(connPos));
+                }
+            } else {
+                mergeInto(neighbour, newNode);
+                waveTriggers.clear();
+                waveTriggers.add(nodeMap.get(origin));
+            }
+        } else {
+            addEdge(origin, connPos, storage);
+            waveTriggers.add(neighbour);
+        }
+    }
 
-    public List<BlockNetwork<C>> onBlockRemoved(Vector3i pos, WorldChunk chunk) {
+    private int countExternalConnections(Set<Vector3i> occupiedSet, WorldChunk chunk) {
+        return (int) occupiedSet.stream()
+                .flatMap(p -> BlockFaceEnum.getConnections(chunk, p).stream())
+                .filter(c -> !occupiedSet.contains(c))
+                .distinct()
+                .count();
+    }
 
-        Node removedNode = nodeMap.remove(pos);
-        if (removedNode == null) return Collections.emptyList();
-        removedNode.blocks.remove(pos);
-        nodes.remove(removedNode);
+    private Node unregisterNode(Set<Vector3i> occupiedSet) {
+        Node node = nodeMap.get(occupiedSet.iterator().next());
+        if (node == null) return null;
+        for (Vector3i p : occupiedSet) nodeMap.remove(p);
+        node.blocks.removeAll(occupiedSet);
+        nodes.remove(node);
+        return node;
+    }
 
-        Set<Node> affectedNeighbours = new LinkedHashSet<>();
+    private Set<Node> disconnectNode(Node removedNode) {
+        Set<Node> affected = new LinkedHashSet<>();
         for (Edge e : removedNode.connectedEdges) {
             Node neighbour = e.other(removedNode);
             if (neighbour != null) {
                 neighbour.connectedEdges.remove(e);
-                affectedNeighbours.add(neighbour);
+                affected.add(neighbour);
+            }
+        }
+        return affected;
+    }
+
+    private void triggerWaves(Set<Node> neighbours) {
+        for (Node n : neighbours)
+            if (n.storage != null) activeWaves.add(new UpdateWave(n));
+    }
+
+    private List<BlockNetwork<C>> detectSplit() {
+        if (nodes.isEmpty()) return Collections.emptyList();
+
+        Set<Node> visited = new HashSet<>();
+        Queue<Node> bfs = new ArrayDeque<>();
+        Node start = nodes.iterator().next();
+        bfs.add(start);
+        visited.add(start);
+        while (!bfs.isEmpty()) {
+            Node cur = bfs.poll();
+            for (Edge e : cur.connectedEdges) {
+                Node nb = e.other(cur);
+                if (nb != null && visited.add(nb)) bfs.add(nb);
             }
         }
 
-        List<BlockNetwork<C>> splitNetworks = new ArrayList<>();
-        Set<Node> waveTriggers = new LinkedHashSet<>();
+        if (visited.size() == nodes.size()) return Collections.emptyList();
 
-        // Pipe-Nachbarn prüfen ob sie jetzt zusammengeführt werden können
-        for (Node neighbour : affectedNeighbours) {
-            if (neighbour.storage == null) continue;
-            waveTriggers.add(neighbour);
+        List<BlockNetwork<C>> splits = new ArrayList<>();
+        Set<Node> remaining = new HashSet<>(nodes);
+        remaining.removeAll(visited);
+        nodes.retainAll(visited);
 
-            if (!neighbour.storage.isPipe()) continue;
-
-            List<Vector3i> neighbourConns = BlockFaceEnum.getConnections(chunk, neighbour.blocks.iterator().next());
-            if (neighbourConns.size() > 2) continue;
-
-            List<Node> pipeNeighbours = neighbour.connectedEdges.stream()
-                    .map(e -> e.other(neighbour))
-                    .filter(n -> n != null && n.storage.isPipe())
-                    .toList();
-
-            if (pipeNeighbours.size() == 2) {
-                Node a = pipeNeighbours.get(0);
-                Node b = pipeNeighbours.get(1);
-                List<Vector3i> aConns = BlockFaceEnum.getConnections(chunk, a.blocks.iterator().next());
-                List<Vector3i> bConns = BlockFaceEnum.getConnections(chunk, b.blocks.iterator().next());
-
-                if (a != b
-                        && a.storage.shouldMerge(neighbour.storage)
-                        && b.storage.shouldMerge(neighbour.storage)
-                        && aConns.size() <= 2 && bConns.size() <= 2) {
-                    nodes.remove(neighbour);
-                    mergeInto(a, neighbour);
-                    mergeInto(nodeMap.get(a.blocks.iterator().next()), b);
-                    waveTriggers.remove(neighbour);
-                    waveTriggers.add(nodeMap.get(a.blocks.iterator().next()));
-                }
-            }
-        }
-
-        // Split-Erkennung per BFS über Edge-Graph
-        if (!nodes.isEmpty()) {
-            Set<Node> visited = new HashSet<>();
-            Queue<Node> bfs = new ArrayDeque<>();
-            Node start = nodes.iterator().next();
-            bfs.add(start);
-            visited.add(start);
-            while (!bfs.isEmpty()) {
-                Node cur = bfs.poll();
+        while (!remaining.isEmpty()) {
+            Set<Node> component = new HashSet<>();
+            Queue<Node> q = new ArrayDeque<>();
+            Node seed = remaining.iterator().next();
+            q.add(seed);
+            component.add(seed);
+            while (!q.isEmpty()) {
+                Node cur = q.poll();
                 for (Edge e : cur.connectedEdges) {
                     Node nb = e.other(cur);
-                    if (nb != null && visited.add(nb)) bfs.add(nb);
+                    if (nb != null && component.add(nb)) q.add(nb);
                 }
             }
+            remaining.removeAll(component);
 
-            if (visited.size() < nodes.size()) {
-                Set<Node> remaining = new HashSet<>(nodes);
-                remaining.removeAll(visited);
-                nodes.retainAll(visited);
-
-                while (!remaining.isEmpty()) {
-                    Set<Node> component = new HashSet<>();
-                    Queue<Node> q = new ArrayDeque<>();
-                    Node seed = remaining.iterator().next();
-                    q.add(seed);
-                    component.add(seed);
-                    while (!q.isEmpty()) {
-                        Node cur = q.poll();
-                        for (Edge e : cur.connectedEdges) {
-                            Node nb = e.other(cur);
-                            if (nb != null && component.add(nb)) q.add(nb);
-                        }
-                    }
-                    remaining.removeAll(component);
-
-                    BlockNetwork<C> newNetwork = factory.get();
-                    for (Node n : component) {
-                        newNetwork.nodes.add(n);
-                        for (Vector3i b : n.blocks) newNetwork.nodeMap.put(b, n);
-                    }
-                    splitNetworks.add(newNetwork);
-                }
+            BlockNetwork<C> newNetwork = factory.get();
+            for (Node n : component) {
+                newNetwork.nodes.add(n);
+                for (Vector3i b : n.blocks) newNetwork.nodeMap.put(b, n);
             }
+            splits.add(newNetwork);
         }
 
-        for (Node trigger : waveTriggers) activeWaves.add(new UpdateWave(trigger));
-        runOnBlockRemoved();
+        return splits;
+    }
 
-        return splitNetworks;
+    // ─── onBlockRemoved ──────────────────────────────────────────────────────
+
+    // ─── onBlockRemoved ──────────────────────────────────────────────────────
+
+    public List<BlockNetwork<C>> onBlockRemoved(Vector3i origin, WorldChunk chunk) {
+        Set<Vector3i> occupiedSet = buildOccupiedSet(origin, chunk);
+        Node removedNode = unregisterNode(occupiedSet);
+        if (removedNode == null) return Collections.emptyList();
+
+        Set<Node> affectedNeighbours = disconnectNode(removedNode);
+        triggerWaves(affectedNeighbours);
+        List<BlockNetwork<C>> splits = detectSplit();
+        runOnBlockRemoved();
+        return splits;
     }
 
     // ─── Hilfsmethoden ───────────────────────────────────────────────────────

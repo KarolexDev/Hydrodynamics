@@ -45,7 +45,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public boolean isExtendable;
 
     public GasNetworkComponent() {
-        this(0, 0, GasNetworkType.TANK, 0, 0, 0, 0, false);
+        this(0, 0, GasNetworkType.NONE, 0, 0, 0, 0, false);
     }
 
     public GasNetworkComponent(double amount, double energy, GasNetworkType type, double volume, double internalPressure, double generationRate, double consumptionRate, boolean isExtendable) {
@@ -61,7 +61,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
 
     // Physics
-    /** Ideale Gasgleichung p = nRT/V, nur für TANK relevant */
+    /** Ideale Gasgleichung p = nRT/V, für TANK und PIPE relevant */
     public double pressure() {
         if ((type != GasNetworkType.PIPE) && (type != GasNetworkType.TANK) || volume <= 0) return internalPressure;
         return (amount * R * temperature()) / volume;
@@ -134,6 +134,8 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public GasNetworkComponent del(GasNetworkComponent flux) {
         amount -= flux.amount;
         energy -= flux.energy;
+        assert amount >= 0;
+        assert energy >= 0;
         return this;
     }
 
@@ -156,10 +158,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     @Override
     public GasNetworkComponent zero() {
-        GasNetworkComponent z = new GasNetworkComponent();
-        z.type   = GasNetworkType.TANK;
-        z.volume = 0;
-        return z;
+        return new GasNetworkComponent();
     }
 
     @Override

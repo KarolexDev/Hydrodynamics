@@ -60,8 +60,9 @@ public class GasNetworkSystem {
                         GasNetworkComponent component = blockEntity.getComponent(GasNetworkComponent.getComponentType());
                         if (component == null) return;
 
-                        List<Vector3i> occupiedPositions = getOccupiedPositions(bt, targetPos);
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
+
+                        // TODO: Improve later: Can get bounding box first, so it doesn't have to get it multiple times (unless it doesn't...?)
                         network.onBlockPlaced(
                                 new Vector3i(x, y, z),
                                 chunk,

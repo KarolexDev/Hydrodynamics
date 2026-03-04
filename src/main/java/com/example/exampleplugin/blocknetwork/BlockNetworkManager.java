@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends BlockNetwork<C>>
         implements Resource<EntityStore> {
@@ -29,41 +30,42 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
         for (N network : networks) network.tick(dt, world);
     }
 
-    public void onBlockPlaced(Vector3i pos, WorldChunk chunk, C storage) {
+    public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage) {
+        Set<Vector3i> occupied = BlockFaceEnum.getOccupiedPositions(chunk, origin);
+        Set<Vector3i> externalConns = occupied.stream()
+                .flatMap(p -> BlockFaceEnum.getConnections(chunk, p).stream())
+                .filter(c -> !occupied.contains(c))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        List<Vector3i> connections = BlockFaceEnum.getConnections(chunk, pos);
-
-        // Netzwerke finden die einen der Verbindungsblöcke bereits kennen
         List<N> neighbours = networks.stream()
-                .filter(n -> connections.stream().anyMatch(n::containsBlock))
+                .filter(n -> externalConns.stream().anyMatch(n::containsBlock))
                 .toList();
 
         if (neighbours.isEmpty()) {
             N network = factory.get();
-            network.onBlockPlaced(pos, connections, chunk, storage);
+            network.onBlockPlaced(origin, chunk, storage);
             networks.add(network);
         } else {
-            // Alle betroffenen Netzwerke zuerst zusammenführen, dann Block einfügen
             N primary = neighbours.getFirst();
             for (int i = 1; i < neighbours.size(); i++) {
                 primary.mergeFrom(neighbours.get(i));
                 networks.remove(neighbours.get(i));
             }
-            primary.onBlockPlaced(pos, connections, chunk, storage);
+            primary.onBlockPlaced(origin, chunk, storage);
         }
 
         networks.removeIf(BlockNetwork::isEmpty);
     }
 
-    public void onBlockRemoved(Vector3i pos, WorldChunk chunk) {
+    public void onBlockRemoved(Vector3i origin, WorldChunk chunk) {
         N network = networks.stream()
-                .filter(n -> n.containsBlock(pos))
+                .filter(n -> n.containsBlock(origin))
                 .findFirst()
                 .orElse(null);
         if (network == null) return;
 
         @SuppressWarnings("unchecked")
-        List<N> split = (List<N>) (List<?>) network.onBlockRemoved(pos, chunk);
+        List<N> split = (List<N>) (List<?>) network.onBlockRemoved(origin, chunk);
 
         if (!split.isEmpty()) {
             networks.remove(network);
