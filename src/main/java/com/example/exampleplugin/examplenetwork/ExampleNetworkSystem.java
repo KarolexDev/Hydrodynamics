@@ -1,7 +1,5 @@
-package com.example.exampleplugin.system;
+package com.example.exampleplugin.examplenetwork;
 
-import com.example.exampleplugin.resource.ExampleNetworkResource;
-import com.example.exampleplugin.component.ExampleComponent;
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.system.EntityEventSystem;

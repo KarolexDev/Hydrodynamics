@@ -1,4 +1,4 @@
-package com.example.exampleplugin.component;
+package com.example.exampleplugin.examplenetwork;
 
 import com.example.exampleplugin.ExamplePlugin;
 import com.example.exampleplugin.blocknetwork.BlockNetworkComponent;

@@ -1,7 +1,7 @@
 package com.example.exampleplugin.interaction;
 
 import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.component.ExampleComponent;
+import com.example.exampleplugin.examplenetwork.ExampleComponent;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;

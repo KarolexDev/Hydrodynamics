@@ -1,6 +1,7 @@
 package com.example.exampleplugin.command;
 
-import com.example.exampleplugin.resource.ExampleNetworkResource;
+import com.example.exampleplugin.examplenetwork.ExampleNetworkResource;
+import com.example.exampleplugin.gasnetwork.GasNetworkResource;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.Message;
@@ -19,7 +20,7 @@ public class ShowBlockNetworks extends CommandBase {
     @Override
     protected void executeSync(@Nonnull CommandContext ctx) {
         Ref<EntityStore> storeRef = ctx.senderAsPlayerRef();
-        ExampleNetworkResource network = storeRef.getStore().getResource(ExampleNetworkResource.getResourceType());
+        GasNetworkResource network = storeRef.getStore().getResource(GasNetworkResource.getResourceType());
 
         ctx.sendMessage(Message.raw(network.toString()));
     }

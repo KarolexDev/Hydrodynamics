@@ -1,6 +1,6 @@
 package com.example.exampleplugin.command;
 
-import com.example.exampleplugin.resource.ExampleNetworkResource;
+import com.example.exampleplugin.examplenetwork.ExampleNetworkResource;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.Message;

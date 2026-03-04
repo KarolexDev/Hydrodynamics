@@ -1,7 +1,6 @@
-package com.example.exampleplugin.resource;
+package com.example.exampleplugin.examplenetwork;
 
 import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.component.ExampleComponent;
 import com.example.exampleplugin.blocknetwork.BlockNetwork;
 import com.example.exampleplugin.blocknetwork.BlockNetworkManager;
 import com.hypixel.hytale.codec.builder.BuilderCodec;

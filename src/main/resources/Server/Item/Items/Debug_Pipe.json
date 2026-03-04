@@ -36,8 +36,11 @@
   "BlockType": {
     "BlockEntity": {
       "Components": {
-        "ExampleComponent": {
-          "ExampleValue": 0
+        "GasNetworkComponent": {
+          "InitialAmount": 100,
+          "InitialEnergy": 100,
+          "Type": "Tank",
+          "Volume": 100
         }
       }
     },
