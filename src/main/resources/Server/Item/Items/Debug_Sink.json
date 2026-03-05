@@ -37,12 +37,12 @@
     "BlockEntity": {
       "Components": {
         "GasNetworkComponent": {
-          "InitialAmount": 100,
-          "InitialEnergy": 100,
-          "Type": "Sink",
-          "Volume": 100,
-          "InternalPressure": 100,
-          "ConsumptionRate": 100
+          "InitialAmount": 50,
+          "InitialEnergy": 152000,
+          "Type": "Source",
+          "Volume": 1,
+          "InternalPressure": 100000,
+          "ConsumptionRate": 10000
         }
       }
     },

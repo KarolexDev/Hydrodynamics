@@ -23,113 +23,11 @@
           "PipeConnection"
         ]
       },
-      "PatternsToMatchAnyOf": [
-        {
-          "Type": "Custom",
-          "AllowedPatternTransformations": {
-            "IsCardinallyRotatable": false
-          },
-          "RulesToMatch": [
-            {
-              "Position": {
-                "X": -1,
-                "Y": 0,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "East": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 1,
-                "Y": 0,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "West": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": -1,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "Up": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": 1,
-                "Z": 0
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "Down": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": 0,
-                "Z": -1
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "South": [
-                  "PipeConnection"
-                ]
-              }
-            },
-            {
-              "Position": {
-                "X": 0,
-                "Y": 0,
-                "Z": 1
-              },
-              "IncludeOrExclude": "Exclude",
-              "FaceTags": {
-                "North": [
-                  "PipeConnection"
-                ]
-              }
-            }
-          ]
-        }
-      ]
+      "PatternsToMatchAnyOf": []
     },
     "StubUp": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
-        "West": [
-          "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
         "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
           "PipeConnection"
         ]
       },
@@ -224,21 +122,6 @@
     },
     "StubDown": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
-        "West": [
-          "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
-          "PipeConnection"
-        ],
         "Down": [
           "PipeConnection"
         ]
@@ -334,22 +217,7 @@
     },
     "StubSide": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
-          "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
           "PipeConnection"
         ]
       },
@@ -449,18 +317,6 @@
         ],
         "West": [
           "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
-          "PipeConnection"
         ]
       },
       "PatternsToMatchAnyOf": [
@@ -554,18 +410,6 @@
     },
     "IVert": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
-        "West": [
-          "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
         "Up": [
           "PipeConnection"
         ],
@@ -664,22 +508,10 @@
     },
     "LUp": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
           "PipeConnection"
         ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
         "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
           "PipeConnection"
         ]
       },
@@ -774,19 +606,7 @@
     },
     "LDown": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
-          "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
           "PipeConnection"
         ],
         "Down": [
@@ -884,22 +704,10 @@
     },
     "LFlat": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
           "PipeConnection"
         ],
         "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
           "PipeConnection"
         ]
       },
@@ -1000,16 +808,7 @@
         "West": [
           "PipeConnection"
         ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
         "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
           "PipeConnection"
         ]
       },
@@ -1108,15 +907,6 @@
           "PipeConnection"
         ],
         "West": [
-          "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
           "PipeConnection"
         ],
         "Down": [
@@ -1222,15 +1012,6 @@
         ],
         "South": [
           "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
-          "PipeConnection"
         ]
       },
       "PatternsToMatchAnyOf": [
@@ -1324,16 +1105,7 @@
     },
     "TSide": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
-          "PipeConnection"
-        ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
           "PipeConnection"
         ],
         "Up": [
@@ -1434,22 +1206,13 @@
     },
     "TCurvedUp": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
           "PipeConnection"
         ],
         "South": [
           "PipeConnection"
         ],
-        "North": [
-          "PipeConnection"
-        ],
         "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
           "PipeConnection"
         ]
       },
@@ -1544,19 +1307,10 @@
     },
     "TCurvedDown": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
           "PipeConnection"
         ],
         "South": [
-          "PipeConnection"
-        ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
           "PipeConnection"
         ],
         "Down": [
@@ -1663,13 +1417,7 @@
         "South": [
           "PipeConnection"
         ],
-        "North": [
-          "PipeConnection"
-        ],
         "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
           "PipeConnection"
         ]
       },
@@ -1773,12 +1521,6 @@
         "South": [
           "PipeConnection"
         ],
-        "North": [
-          "PipeConnection"
-        ],
-        "Up": [
-          "PipeConnection"
-        ],
         "Down": [
           "PipeConnection"
         ]
@@ -1874,16 +1616,10 @@
     },
     "XCurved": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
           "PipeConnection"
         ],
         "South": [
-          "PipeConnection"
-        ],
-        "North": [
           "PipeConnection"
         ],
         "Up": [
@@ -1995,12 +1731,6 @@
         ],
         "North": [
           "PipeConnection"
-        ],
-        "Up": [
-          "PipeConnection"
-        ],
-        "Down": [
-          "PipeConnection"
         ]
       },
       "PatternsToMatchAnyOf": [
@@ -2094,16 +1824,10 @@
     },
     "XSide": {
       "FaceTags": {
-        "East": [
-          "PipeConnection"
-        ],
         "West": [
           "PipeConnection"
         ],
-        "South": [
-          "PipeConnection"
-        ],
-        "North": [
+        "East": [
           "PipeConnection"
         ],
         "Up": [
@@ -2218,9 +1942,6 @@
         ],
         "Up": [
           "PipeConnection"
-        ],
-        "Down": [
-          "PipeConnection"
         ]
       },
       "PatternsToMatchAnyOf": [
@@ -2326,9 +2047,6 @@
         "North": [
           "PipeConnection"
         ],
-        "Up": [
-          "PipeConnection"
-        ],
         "Down": [
           "PipeConnection"
         ]
@@ -2431,9 +2149,6 @@
           "PipeConnection"
         ],
         "South": [
-          "PipeConnection"
-        ],
-        "North": [
           "PipeConnection"
         ],
         "Up": [

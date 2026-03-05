@@ -17,6 +17,9 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     public static final double R = 8.314; // J/(mol·K)
 
+    public static final double MIN_AMOUNT = 1e-10;  // minimale Teilchenzahl
+    public static final double MIN_ENERGY = 1e-10;  // minimale Energie
+
     public static final BuilderCodec CODEC;
 
     static {
@@ -59,12 +62,12 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         this.isExtendable = isExtendable;
     }
 
+    public GasNetworkComponent(double amount, double energy) { this(amount, energy, GasNetworkType.NONE, 0, 0, 0, 0, false); }
 
     // Physics
     /** Ideale Gasgleichung p = nRT/V, für TANK und PIPE relevant */
     public double pressure() {
-        if ((type != GasNetworkType.PIPE) && (type != GasNetworkType.TANK) || volume <= 0) return internalPressure;
-        return (amount * R * temperature()) / volume;
+        return 2 * energy / (3 * volume);
     }
 
     /** T = E / (n * Cv), Cv = 1.5R für einatomiges Gas */
@@ -78,38 +81,38 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     // -------------------------------------------------------------------------
 
     @Override
-    public GasNetworkComponent calculateFlux(GasNetworkComponent from, GasNetworkComponent to) {
+    public GasNetworkComponent calculateFlux(float dt, GasNetworkComponent from, GasNetworkComponent to) {
         GasNetworkComponent flux = zero();
+
+        double totalVolume = from.volume + to.volume;
+        if (totalVolume <= 0) return flux;
+
+        double T1 = from.temperature();
+        double T2 = to.temperature();
+        if (T1 <= 0 || T2 <= 0) return flux;
 
         double pFrom = from.pressure();
         double pTo   = to.pressure();
-        double dp    = pFrom - pTo;
+        double pMax  = Math.max(pFrom, pTo);
+        if (pMax <= 0) return flux;
 
-        switch (from.type) {
-            case TANK, PIPE -> {
-                // Normaler Druckausgleich proportional zur Druckdifferenz
-                double conductance = ((from.volume + to.volume) / 2.0) * 0.01;
-                flux.amount = dp * conductance;
-            }
-            case SOURCE -> {
-                // Quelle: pumpt Teilchen in den Nachbar-Node rein
-                // Fluss proportional zur Differenz zwischen internem Druck und Node-Druck
-                double sourceDp = from.internalPressure - pTo;
-                flux.amount = Math.max(0, sourceDp * from.generationRate);
-            }
-            case SINK -> {
-                // Senke: saugt Teilchen aus dem from-Node heraus
-                // Fluss proportional zur Differenz zwischen Node-Druck und internem Druck
-                double sinkDp = pFrom - to.internalPressure;
-                flux.amount = Math.max(0, sinkDp * to.consumptionRate);
-            }
-        }
+        // Gleichgewichts-Teilchenzahl bei gleichem Druck
+        double pEq        = (from.amount + to.amount) * R / (from.volume / T1 + to.volume / T2);
+        double equilibrium = pEq * from.volume / (R * T1);
+        double deficit     = from.amount - equilibrium;
 
-        // Konvektiver Energietransport
+        double conductance = 1e3d;
+        double alpha = 1.0 - Math.exp(-conductance * Math.abs(pFrom - pTo) / pMax * dt);
+        alpha = Math.clamp(alpha, 0.0, 1.0);
+
+        flux.amount = deficit * alpha;
+
         if (flux.amount > 0) {
-            flux.energy = flux.amount * from.temperature() * 1.5 * R;
+            flux.amount = Math.min(flux.amount, from.amount - MIN_AMOUNT);
+            flux.energy = flux.amount * T1 * 1.5 * R;
         } else if (flux.amount < 0) {
-            flux.energy = flux.amount * to.temperature() * 1.5 * R;
+            flux.amount = Math.max(flux.amount, -(to.amount - MIN_AMOUNT));
+            flux.energy = flux.amount * T2 * 1.5 * R;
         }
 
         return flux;
@@ -119,21 +122,21 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public GasNetworkComponent mergeComponents(GasNetworkComponent other) {
         amount += other.amount;
         energy += other.energy;
-        volume += other.volume; // extensiv → wird bei Node-Erweiterung addiert
+        volume += other.volume;
         return this;
     }
 
     @Override
     public GasNetworkComponent add(GasNetworkComponent flux) {
-        amount = Math.max(0, amount + flux.amount);
-        energy = Math.max(0, energy + flux.energy);
+        amount = Math.max(MIN_AMOUNT, amount + flux.amount);
+        energy = Math.max(MIN_ENERGY, energy + flux.energy);
         return this;
     }
 
     @Override
     public GasNetworkComponent del(GasNetworkComponent flux) {
-        amount = Math.max(0, amount - flux.amount);
-        energy = Math.max(0, energy - flux.energy);
+        amount = Math.max(MIN_AMOUNT, amount - flux.amount);
+        energy = Math.max(MIN_ENERGY, energy - flux.energy);
         return this;
     }
 
@@ -169,6 +172,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         c.internalPressure= this.internalPressure;
         c.generationRate  = this.generationRate;
         c.consumptionRate = this.consumptionRate;
+        c.isExtendable = this.isExtendable;
         return c;
     }
 
@@ -181,8 +185,24 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     @Override
     public void onWorldUpdate(Vector3i pos, World world) {
         switch (type) {
-            case SOURCE -> amount += generationRate;
-            case SINK   -> amount  = Math.max(0, amount - consumptionRate);
+            case SOURCE -> {
+                double dn = generationRate * (internalPressure - pressure());
+                double dEnergy = dn * 1.5 * R * temperature();
+
+                GasNetworkComponent flux = new GasNetworkComponent(
+                        dn,
+                        dEnergy
+                );
+
+                this.add(flux);
+            }
+            case SINK   -> {    // TODO
+                if (amount > 0) {
+                    double fraction = Math.min(consumptionRate, amount) / amount;
+                    energy = Math.max(0, energy * (1 - fraction));
+                    amount = Math.max(0, amount - consumptionRate);
+                }
+            }
         }
     }
 
@@ -220,6 +240,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public static ComponentType<ChunkStore, GasNetworkComponent> getComponentType() { return ExamplePlugin.getInstance().getGasNetworkComponentType(); }
 
     public String toString() {
-        return "Amount: " + this.amount + "\nEnergy: " + this.energy;
+        return String.format("Amount: %.1f mol\nEnergy: %.1f kJ\n\nPressure: %.1f bar\nTemperature: %.1f °C\n\nVolume: %.2f m³",
+                this.amount, this.energy * 1e-3, this.pressure() * 1e-5, this.temperature() - 273.15, this.volume);
     }
 }

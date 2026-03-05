@@ -7,6 +7,7 @@ import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.component.Resource;
 import com.hypixel.hytale.math.vector.Vector3i;
+import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
@@ -30,8 +31,8 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
         for (N network : networks) network.tick(dt, world);
     }
 
-    public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage) {
-        Set<Vector3i> occupied = BlockFaceEnum.getOccupiedPositions(chunk, origin);
+    public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage, BlockType blockType) {
+        Set<Vector3i> occupied = BlockFaceEnum.getOccupiedPositions(blockType, origin, chunk);
         Set<Vector3i> externalConns = occupied.stream()
                 .flatMap(p -> BlockFaceEnum.getConnections(chunk, p).stream())
                 .filter(c -> !occupied.contains(c))
@@ -43,7 +44,7 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
 
         if (neighbours.isEmpty()) {
             N network = factory.get();
-            network.onBlockPlaced(origin, chunk, storage);
+            network.onBlockPlaced(origin, blockType, chunk, storage);
             networks.add(network);
         } else {
             N primary = neighbours.getFirst();
@@ -51,27 +52,25 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
                 primary.mergeFrom(neighbours.get(i));
                 networks.remove(neighbours.get(i));
             }
-            primary.onBlockPlaced(origin, chunk, storage);
+            primary.onBlockPlaced(origin, blockType, chunk, storage);
         }
 
         networks.removeIf(BlockNetwork::isEmpty);
     }
 
-    public void onBlockRemoved(Vector3i origin, WorldChunk chunk) {
+    public void onBlockRemoved(Vector3i origin, WorldChunk chunk, BlockType blockType) {
         N network = networks.stream()
                 .filter(n -> n.containsBlock(origin))
                 .findFirst()
                 .orElse(null);
         if (network == null) return;
 
-        @SuppressWarnings("unchecked")
-        List<N> split = (List<N>) (List<?>) network.onBlockRemoved(origin, chunk);
+        List<N> split = (List<N>) (List<?>) network.onBlockRemoved(origin, blockType, chunk);
 
+        networks.addAll(split);
         if (!split.isEmpty()) {
             networks.remove(network);
-            networks.addAll(split);
         }
-
         networks.removeIf(BlockNetwork::isEmpty);
     }
 

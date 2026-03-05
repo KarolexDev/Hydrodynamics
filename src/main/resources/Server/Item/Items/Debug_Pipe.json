@@ -37,10 +37,10 @@
     "BlockEntity": {
       "Components": {
         "GasNetworkComponent": {
-          "InitialAmount": 100,
-          "InitialEnergy": 100,
+          "InitialAmount": 1,
+          "InitialEnergy": 1,
           "Type": "Pipe",
-          "Volume": 100,
+          "Volume": 0.25,
           "IsExtendable": true
         }
       }

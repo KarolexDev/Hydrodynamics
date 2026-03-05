@@ -50,7 +50,7 @@ public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>
     }
 
     @Override
-    public ExampleComponent calculateFlux(ExampleComponent from, ExampleComponent to) {
+    public ExampleComponent calculateFlux(float dt, ExampleComponent from, ExampleComponent to) {
         return this;
     }
 

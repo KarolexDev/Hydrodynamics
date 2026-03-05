@@ -58,12 +58,13 @@ public class ExampleNetworkSystem {
                         ExampleComponent component = blockEntity.getComponent(ExampleComponent.getComponentType());
                         if (component == null) return;
 
-                        List<Vector3i> occupiedPositions = getOccupiedPositions(bt, targetPos);
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
+
                         network.onBlockPlaced(
                                 new Vector3i(x, y, z),
                                 chunk,
-                                new ExampleComponent()
+                                new ExampleComponent(),
+                                bt
                         );
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -103,11 +104,11 @@ public class ExampleNetworkSystem {
                         Holder<ChunkStore> blockEntity = bt.getBlockEntity();
                         if (blockEntity == null) return;  // war auch ein Bug: != statt ==
 
-                        List<Vector3i> occupiedPositions = getOccupiedPositions(bt, targetPos);
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
                         network.onBlockRemoved(
                                 new Vector3i(x, y, z),
-                                chunk
+                                chunk,
+                                breakBlockEvent.getBlockType()
                         );
                     } catch (Exception e) {
                         e.printStackTrace();

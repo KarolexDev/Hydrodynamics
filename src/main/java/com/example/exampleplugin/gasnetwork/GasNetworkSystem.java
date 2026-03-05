@@ -66,7 +66,8 @@ public class GasNetworkSystem {
                         network.onBlockPlaced(
                                 new Vector3i(x, y, z),
                                 chunk,
-                                component
+                                component.copy(),    // COPY is important!
+                                bt
                         );
                         System.out.println("placed");
                     } catch (Exception e) {
@@ -103,15 +104,16 @@ public class GasNetworkSystem {
                 world.execute(() -> {
                     try {
                         // WICHTIG: BlockType VOR dem Entfernen lesen – nach dem Break ist er weg
-                        BlockType bt = world.getBlockType(x, y, z);
+                        BlockType bt = breakBlockEvent.getBlockType();
                         Holder<ChunkStore> blockEntity = bt.getBlockEntity();
-                        if (blockEntity != null) return;  // TODO: Claude du HS (!= ist richtig, NICHT ==)
+                        if (blockEntity == null) return;  // TODO: Claude du HS
 
                         List<Vector3i> occupiedPositions = getOccupiedPositions(bt, targetPos);
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
                         network.onBlockRemoved(
                                 new Vector3i(x, y, z),
-                                chunk
+                                chunk,
+                                bt
                         );
                     } catch (Exception e) {
                         e.printStackTrace();

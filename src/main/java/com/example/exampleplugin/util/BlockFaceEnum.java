@@ -125,8 +125,7 @@ public class BlockFaceEnum {
         return result;
     }
 
-    public static Set<Vector3i> getOccupiedPositions(WorldChunk chunk, Vector3i origin) {
-        BlockType blockType = chunk.getBlockType(origin);
+    public static Set<Vector3i> getOccupiedPositions(BlockType blockType, Vector3i origin, WorldChunk chunk) {
         if (blockType == null) return Set.of(origin);
 
         BlockBoundingBoxes hitbox = BlockBoundingBoxes.getAssetMap().getAsset(blockType.getHitboxTypeIndex());

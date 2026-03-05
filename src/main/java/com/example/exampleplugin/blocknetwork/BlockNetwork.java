@@ -6,6 +6,7 @@ import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.math.vector.Vector3i;
+import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 
@@ -181,7 +182,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             Node fromNode = nodeMap.get(from);
             Node toNode   = nodeMap.get(to);
             if (fromNode != null && toNode != null)
-                flux = flux.calculateFlux(fromNode.storage, toNode.storage);
+                flux = flux.calculateFlux(dt, fromNode.storage, toNode.storage);
             return this;
         }
 
@@ -192,21 +193,23 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             if (node == toNode)   return fromNode;
             return null;
         }
+
+        public Vector3i other(Vector3i node) {
+            if (node == from) return to;
+            if (node == to)   return from;
+            return null;
+        }
     }
 
     // ─── onBlockPlaced ───────────────────────────────────────────────────────
     // SEEMS RIGHT??
     // TODO: Nvm, may need to roll back... -.-
 
-    public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage) {
-        Set<Vector3i> occupiedSet = buildOccupiedSet(origin, chunk);
+    public void onBlockPlaced(Vector3i origin, BlockType blockType, WorldChunk chunk, C storage) {
+        Set<Vector3i> occupiedSet = BlockFaceEnum.getOccupiedPositions(blockType, origin, chunk);
         registerNode(occupiedSet, storage);
         connectNewNode(origin, occupiedSet, chunk, storage);
         runOnBlockAdded();
-    }
-
-    private Set<Vector3i> buildOccupiedSet(Vector3i origin, WorldChunk chunk) {
-        return BlockFaceEnum.getOccupiedPositions(chunk, origin);
     }
 
     private Node registerNode(Set<Vector3i> occupiedSet, C storage) {
@@ -265,7 +268,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                     waveTriggers.clear();
                     waveTriggers.add(nodeMap.get(origin));
                 } else {
-                    if (neighbourConns.size() > 2) splitNode(connPos, chunk); // chunk fehlt hier noch → weiter unten
+                    if (neighbourConns.size() > 2) splitNode(connPos, chunk);
                     addEdge(origin, connPos, storage);
                     waveTriggers.add(nodeMap.get(connPos));
                 }
@@ -301,7 +304,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         Set<Node> affected = new LinkedHashSet<>();
         for (Edge e : removedNode.connectedEdges) {
             Node neighbour = e.other(removedNode);
-            if (neighbour != null) {
+            if (neighbour != null) {    // TODO: Weird, should't happen
                 neighbour.connectedEdges.remove(e);
                 affected.add(neighbour);
             }
@@ -355,44 +358,150 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             BlockNetwork<C> newNetwork = factory.get();
             for (Node n : component) {
                 newNetwork.nodes.add(n);
-                for (Vector3i b : n.blocks) newNetwork.nodeMap.put(b, n);
+                for (Vector3i b : n.blocks) {
+                    newNetwork.nodeMap.put(b, n);
+                    nodeMap.remove(b); // ← aus original nodeMap entfernen
+                }
             }
             splits.add(newNetwork);
         }
 
+        // nodeMap ist jetzt konsistent – nur noch Einträge der verbliebenen Nodes
         return splits;
     }
 
     // ─── onBlockRemoved ──────────────────────────────────────────────────────
 
-    public List<BlockNetwork<C>> onBlockRemoved(Vector3i origin, WorldChunk chunk) {
-        Set<Vector3i> occupiedSet = buildOccupiedSet(origin, chunk);
-        Node removedNode = unregisterNode(occupiedSet);
+    public List<BlockNetwork<C>> onBlockRemoved(Vector3i origin, BlockType blockType, WorldChunk chunk) {
+        Node removedNode = nodeMap.get(origin);
         if (removedNode == null) return Collections.emptyList();
 
         Set<Node> affectedNeighbours = disconnectNode(removedNode);
+        splitOrUnregisterNode(origin, blockType, removedNode, affectedNeighbours, chunk);
+        mergeLinearNodes(affectedNeighbours);
+
         triggerWaves(affectedNeighbours);
         List<BlockNetwork<C>> splits = detectSplit();
         runOnBlockRemoved();
         return splits;
     }
 
+    private void mergeLinearNodes(Set<Node> affectedNeighbours) {
+        for (Node node : affectedNeighbours) {  // was that a bug??
+            if (!nodes.contains(node)) continue;
+            if (!node.storage.isPipe()) continue;
+            if (node.connectedEdges.size() > 2) continue;
+
+            for (Edge e : node.connectedEdges) {
+                Node neighbour = e.other(node);
+                if (neighbour == null) continue;
+                if (!neighbour.storage.isPipe()) continue;  // TODO: In der Regel nur Pipes betroffen (Könnten aber auch Tanks sein <-- MÖGLICHER BUG!
+                if (neighbour.connectedEdges.size() > 2) continue;
+                mergeInto(node, neighbour);
+            }
+        }
+    }
+
+    private void splitOrUnregisterNode(Vector3i origin, BlockType blockType, Node removedNode, Set<Node> affectedNeighbours, WorldChunk chunk) {
+        Set<Vector3i> occupied = BlockFaceEnum.getOccupiedPositions(blockType, origin, chunk);
+
+        if (occupied.size() > 1) {
+            // Multiblock mit größerer Hitbox: ganzen Node entfernen
+            for (Vector3i b : removedNode.blocks) nodeMap.remove(b);
+            nodes.remove(removedNode);
+        } else if (removedNode.blocks.size() > 1) {
+            // 1x1x1 Blöcke durch mergeInto zusammengefasst
+            partitionMultiBlockNode(origin, removedNode, affectedNeighbours);
+        } else {
+            // Einzelner Block
+            nodeMap.remove(origin);
+            nodes.remove(removedNode);
+        }
+    }
+
+    private void partitionMultiBlockNode(Vector3i removedPos, Node oldNode, Set<Node> affectedNeighbours) {
+        nodeMap.remove(removedPos);
+        oldNode.blocks.remove(removedPos);
+
+        int remaining = oldNode.blocks.size();
+        int total = remaining + 1;
+
+        nodes.remove(oldNode);
+        for (Vector3i b : oldNode.blocks) nodeMap.remove(b);
+
+        Set<Vector3i> unvisited = new LinkedHashSet<>(oldNode.blocks);
+        while (!unvisited.isEmpty()) {
+            Node seg = buildSegment(unvisited);
+
+            @SuppressWarnings("unchecked")
+            C[] parts = oldNode.storage.partition(seg.blocks.size(), total);
+            seg.storage = parts[0];
+
+            assignEdgesToSegment(seg, oldNode);
+            nodes.add(seg);
+            affectedNeighbours.add(seg);
+        }
+    }
+
+    private Node buildSegment(Set<Vector3i> unvisited) {
+        Vector3i seed = unvisited.iterator().next();
+        unvisited.remove(seed);
+
+        Node seg = new Node();
+        seg.blocks.add(new Vector3i(seed));
+        nodeMap.put(new Vector3i(seed), seg);
+
+        Queue<Vector3i> bfs = new ArrayDeque<>();
+        bfs.add(seed);
+        while (!bfs.isEmpty()) {
+            Vector3i cur = bfs.poll();
+            for (Vector3i offset : BlockFaceEnum.FACE_OFFSETS) {
+                Vector3i adj = new Vector3i(cur).add(offset);
+                if (unvisited.remove(adj)) {
+                    seg.blocks.add(new Vector3i(adj));
+                    nodeMap.put(new Vector3i(adj), seg);
+                    bfs.add(adj);
+                }
+            }
+        }
+        return seg;
+    }
+
+    private void assignEdgesToSegment(Node seg, Node oldNode) {
+        for (Edge e : oldNode.connectedEdges) {
+            if (!seg.blocks.contains(e.from) && !seg.blocks.contains(e.to)) continue;
+            seg.connectedEdges.add(e);
+            Node other = e.other(oldNode);
+            if (other != null) {
+                other.connectedEdges.remove(e);
+                other.connectedEdges.add(e);
+            }
+        }
+    }
+
     // ─── Hilfsmethoden ───────────────────────────────────────────────────────
     // seems ok
     private void mergeInto(Node target, Node absorbed) {
         target.storage = target.storage.mergeComponents(absorbed.storage);
-        for (Vector3i b : absorbed.blocks) {
-            target.blocks.add(b);
-            nodeMap.put(b, target); // Overwrites old map -> automatically deletes
-        }
+
+        // Erst Edges verarbeiten, BEVOR nodeMap überschrieben wird
         for (Edge e : absorbed.connectedEdges) {
-            if (e.other(absorbed) == target) continue; // interne Edge entfernen
+            if (e.other(absorbed) == target) target.connectedEdges.remove(e); // fixed
+
+            absorbed.connectedEdges.remove(e);
             target.connectedEdges.add(e);
         }
+
+        // Erst danach nodeMap überschreiben
+        for (Vector3i b : absorbed.blocks) {
+            target.blocks.add(b);
+            nodeMap.put(b, target);
+        }
+
         nodes.remove(absorbed);
     }
 
-    private void addEdge(Vector3i fromPos, Vector3i toPos, C storageForFlux) {
+    private void addEdge(Vector3i fromPos, Vector3i toPos, C storage) {
         Node a = nodeMap.get(fromPos);
         Node b = nodeMap.get(toPos);
         if (a == null || b == null) return;
@@ -400,7 +509,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             if (existing.other(a) == b) return; // keine doppelten Edges
         }
         Edge edge = new Edge(new Vector3i(fromPos), new Vector3i(toPos));
-        edge.flux = storageForFlux.zero();
+        edge.flux = storage.copy().zero(); // TODO: UGLY AF BUT STATIC METHODS AREN'T POSSIBLE WITH GENERICS ARHGRHGHG
         a.connectedEdges.add(edge);
         b.connectedEdges.add(edge);
     }
@@ -414,7 +523,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         // Junction bekommt eigenen Node
         Node junctionNode = new Node();
         junctionNode.blocks.add(new Vector3i(junctionPos));
-        junctionNode.storage = oldNode.storage.partition(1, oldNode.blocks.size())[0];
+        junctionNode.storage = oldNode.storage.partition(1, oldNode.blocks.size() - 1)[0];
         nodeMap.put(new Vector3i(junctionPos), junctionNode);
         nodes.add(junctionNode);
 
@@ -456,7 +565,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
             // Storage proportional aufteilen
             @SuppressWarnings("unchecked")
-            C[] parts = oldNode.storage.partition(seg.blocks.size(), oldNode.blocks.size());
+            C[] parts = oldNode.storage.partition(seg.blocks.size(), oldNode.blocks.size() - seg.blocks.size());
             seg.storage = parts[0];
 
             // Externe Edges des alten Nodes die zu diesem Segment gehören übernehmen
@@ -505,9 +614,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         return false;
     }
 
-    public boolean isEmpty() {
-        return nodes.isEmpty();
-    }
+    public boolean isEmpty(){ return nodes.isEmpty() && nodeMap.isEmpty(); }
 
     public C getComponent(Vector3i vec) {
         Node n = nodeMap.get(vec);
