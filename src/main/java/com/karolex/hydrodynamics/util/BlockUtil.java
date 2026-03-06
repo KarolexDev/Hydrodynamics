@@ -99,6 +99,7 @@ public class BlockUtil {
         ConnectedBlockShape shape = connectedBlockShapes.get(shapeName);
         if (shape == null || shape.getFaceTags() == null) return BlockUtil.NONE;
 
+        @SuppressWarnings("removal")
         RotationTuple rotation = chunk.getRotation(pos.x, pos.y, pos.z);
         byte mask = 0;
         for (var entry : shape.getFaceTags().getBlockFaceTags().entrySet()) {
@@ -131,6 +132,7 @@ public class BlockUtil {
         BlockBoundingBoxes hitbox = BlockBoundingBoxes.getAssetMap().getAsset(blockType.getHitboxTypeIndex());
         if (hitbox == null || !hitbox.protrudesUnitBox()) return Set.of(origin);
 
+        @SuppressWarnings("removal")
         RotationTuple rotation = chunk.getRotation(origin.x, origin.y, origin.z);
         BlockBoundingBoxes.RotatedVariantBoxes variant = hitbox.get(rotation.yaw(), rotation.pitch(), rotation.roll());
 
