@@ -1,5 +1,6 @@
 package com.karolex.hydrodynamics.blocknetwork;
 
+import com.hypixel.hytale.server.core.universe.world.World;
 import com.karolex.hydrodynamics.util.BlockUtil;
 import com.karolex.hydrodynamics.blocknetwork.BlockNetworkSerialization.*;
 import com.hypixel.hytale.codec.KeyedCodec;
@@ -7,11 +8,9 @@ import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
-import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
 /**
@@ -32,90 +31,11 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         this.factory = factory;
     }
 
-    public class UpdateWave {
+    private final Set<Node> visitedNodes = new HashSet<>();
+    private final Set<Node> nodesToUpdate = new HashSet<>();
 
-        private class Wavefront {
-            private final Node current;
-            private final Node cameFrom;
-            float remainingTime;
-
-            private Wavefront(Node current, Node cameFrom, float remainingTime) {
-                this.current = current;
-                this.cameFrom = cameFrom;
-                this.remainingTime = remainingTime;
-            }
-        }
-
-        private final List<Wavefront> wavefronts = new CopyOnWriteArrayList<>();
-        private static int globalWaveTick = 0;
-
-        public UpdateWave(Node startNode) {
-            wavefronts.add(new Wavefront(startNode, null, 0));
-        }
-
-        public void tick(float dt) {
-            int currentWaveTick = globalWaveTick++;
-            List<Wavefront> next = new ArrayList<>();
-
-            for (Wavefront wf : wavefronts) {
-                wf.remainingTime -= dt;
-                if (wf.remainingTime > 0) {
-                    next.add(wf);
-                    continue;
-                }
-
-                float changeRate = 0f;
-                if (wf.current.storage != null) {
-                    C storageBefore = wf.current.storage.copy();
-                    wf.current.update(dt, currentWaveTick);
-                    changeRate = storageBefore.changeRate(wf.current.storage);
-                    wf.current.recordChangeRate(changeRate);
-                }
-
-                for (Edge edge : wf.current.connectedEdges) {
-                    Node neighbor = edge.other(wf.current);
-                    if (neighbor == null || neighbor.equals(wf.cameFrom)) continue;
-
-                    edge.update(dt);
-                    next.add(new Wavefront(neighbor, wf.current, neighbor.computeDelay(changeRate)));
-                }
-            }
-
-            wavefronts.clear();
-            wavefronts.addAll(next);
-        }
-
-        public boolean isFinished() {
-            return wavefronts.isEmpty();
-        }
-    }
-
-    private final List<UpdateWave> activeWaves = new ArrayList<>();
-
-    public void tick(float dt, World world) {
-        if (world == null) return;
-
-        for (UpdateWave wave : activeWaves) {
-            wave.tick(dt);
-        }
-        activeWaves.removeIf(UpdateWave::isFinished);
-
-        for (Node node : nodes) {   // TODO: ITERATES THROUGH ALL NODES??? THAT IS STUPID
-            node.timeSinceLastUpdate += dt;
-
-            if (node.triggersUpdates()) {
-                node.timeSinceLastUpdate = 0f;
-                activeWaves.add(new UpdateWave(node));
-            }
-
-            if (node.storage.requiresWorldUpdate()) {
-                for (Vector3i pos : node.blocks) {
-                    final Vector3i capturedPos = new Vector3i(pos);
-                    final C capturedStorage = node.storage;
-                    world.execute(() -> capturedStorage.onWorldUpdate(capturedPos, world));
-                }
-            }
-        }
+    void tick(float dt, World world) {
+        // TODO
     }
 
     final class Node {
@@ -253,7 +173,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                         addEdge(ourPos, theirPos, currentNew.storage);
                         Node refreshedNeighbour = nodeMap.get(theirPos);
                         if (refreshedNeighbour != null)
-                            activeWaves.add(new UpdateWave(refreshedNeighbour));
+                            nodesToUpdate.add(refreshedNeighbour);
                     }
                 } else {
                     // Tanks, for example.
@@ -262,13 +182,13 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             } else {
                 // Different network component types.
                 addEdge(ourPos, theirPos, currentNew.storage);
-                activeWaves.add(new UpdateWave(neighbour));
+                nodesToUpdate.add(neighbour);
             }
         }
 
         // 6.   Trigger update wave.
         Node finalNew = nodeMap.get(origin);
-        if (finalNew != null) activeWaves.add(new UpdateWave(finalNew));
+        if (finalNew != null) nodesToUpdate.add(finalNew);
 
         runOnBlockAdded();
     }
@@ -333,7 +253,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         // 6.   Trigger update waves at affected neighbours.
         for (Node nb : affectedNeighbours) {
             if (nodes.contains(nb) && nb.storage != null)
-                activeWaves.add(new UpdateWave(nb));
+                nodesToUpdate.add(nb);
         }
 
         // 7.   Test for coherency of the network.
@@ -662,7 +582,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         nodeMap.clear();
         nodes.forEach(node -> node.connectedEdges.clear());
         nodes.clear();
-        activeWaves.clear();
+        nodesToUpdate.clear();
     }
 
     public abstract void runOnBlockAdded();
