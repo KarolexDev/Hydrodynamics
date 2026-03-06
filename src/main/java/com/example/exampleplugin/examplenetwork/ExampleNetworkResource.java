@@ -7,7 +7,7 @@ import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.jspecify.annotations.Nullable;
-
+@Deprecated
 public class ExampleNetworkResource extends BlockNetworkManager<ExampleComponent, ExampleNetworkResource.ExampleNetwork>
         implements Resource<EntityStore> {
 

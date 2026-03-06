@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.example"
-version = "0.1.0"
+version = property("mod_version") as String
 val javaVersion = 25
 
 repositories {
@@ -123,5 +123,46 @@ afterEvaluate {
         logger.lifecycle("✅ specific task '${targetTask.name}' hooked for auto-sync.")
     } else {
         logger.warn("⚠️ Could not find 'runServer' or 'server' task to hook auto-sync into.")
+    }
+}
+tasks.register("incrementPatch") {
+    group = "versioning"
+    description = "Increments the patch version: 0.1.0 → 0.1.1"
+    doLast {
+        val propsFile = file("gradle.properties")
+        val content = propsFile.readText()
+        val regex = Regex("""mod_version=(\d+)\.(\d+)\.(\d+)""")
+        val match = regex.find(content) ?: error("mod_version not found in gradle.properties")
+        val newVersion = "${match.groupValues[1]}.${match.groupValues[2]}.${match.groupValues[3].toInt() + 1}"
+        propsFile.writeText(content.replace(match.value, "mod_version=$newVersion"))
+        println("✅ Patch bumped: ${match.groupValues[0].substringAfter("=")} → $newVersion")
+    }
+}
+
+tasks.register("incrementMinor") {
+    group = "versioning"
+    description = "Increments the minor version: 0.1.0 → 0.2.0"
+    doLast {
+        val propsFile = file("gradle.properties")
+        val content = propsFile.readText()
+        val regex = Regex("""mod_version=(\d+)\.(\d+)\.(\d+)""")
+        val match = regex.find(content) ?: error("mod_version not found in gradle.properties")
+        val newVersion = "${match.groupValues[1]}.${match.groupValues[2].toInt() + 1}.0"
+        propsFile.writeText(content.replace(match.value, "mod_version=$newVersion"))
+        println("✅ Minor bumped: ${match.groupValues[0].substringAfter("=")} → $newVersion")
+    }
+}
+
+tasks.register("incrementMajor") {
+    group = "versioning"
+    description = "Increments the major version: 0.1.0 → 1.0.0"
+    doLast {
+        val propsFile = file("gradle.properties")
+        val content = propsFile.readText()
+        val regex = Regex("""mod_version=(\d+)\.(\d+)\.(\d+)""")
+        val match = regex.find(content) ?: error("mod_version not found in gradle.properties")
+        val newVersion = "${match.groupValues[1].toInt() + 1}.0.0"
+        propsFile.writeText(content.replace(match.value, "mod_version=$newVersion"))
+        println("✅ Major bumped: ${match.groupValues[0].substringAfter("=")} → $newVersion")
     }
 }

@@ -19,7 +19,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.List;
 
 import static com.example.exampleplugin.util.MultiBlockUtil.getOccupiedPositions;
-
+@Deprecated
 public class ExampleNetworkSystem {
     public ExampleNetworkSystem() { /* Utility Class */ }
 

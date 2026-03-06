@@ -11,7 +11,7 @@ import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import org.jspecify.annotations.Nullable;
-
+@Deprecated
 public class ExampleComponent implements BlockNetworkComponent<ExampleComponent>, Component<ChunkStore> {
 
     public double val;
