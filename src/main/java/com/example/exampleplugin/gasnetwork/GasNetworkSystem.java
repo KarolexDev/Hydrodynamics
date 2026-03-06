@@ -16,10 +16,6 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.util.List;
-
-import static com.example.exampleplugin.util.MultiBlockUtil.getOccupiedPositions;
-
 public class GasNetworkSystem {
     public GasNetworkSystem() { /* Utility Class */ }
 
@@ -32,8 +28,6 @@ public class GasNetworkSystem {
             network.tick(dt, world);
         }
     }
-
-    //public static class NetworkBlockUpdatedEventSystem extends EntityEventSystem<ChunkStore, Event>
 
     public static class NetworkBlockPlaceEventSystem extends EntityEventSystem<EntityStore, PlaceBlockEvent> {
         public NetworkBlockPlaceEventSystem() { super(PlaceBlockEvent.class); }
@@ -103,12 +97,10 @@ public class GasNetworkSystem {
 
                 world.execute(() -> {
                     try {
-                        // WICHTIG: BlockType VOR dem Entfernen lesen – nach dem Break ist er weg
                         BlockType bt = breakBlockEvent.getBlockType();
                         Holder<ChunkStore> blockEntity = bt.getBlockEntity();
-                        if (blockEntity == null) return;  // TODO: Claude du HS
+                        if (blockEntity == null) return;
 
-                        List<Vector3i> occupiedPositions = getOccupiedPositions(bt, targetPos);
                         var chunk = world.getChunk(ChunkUtil.indexChunkFromBlock(x, z));
                         network.onBlockRemoved(
                                 new Vector3i(x, y, z),

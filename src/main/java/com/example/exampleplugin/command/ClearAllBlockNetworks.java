@@ -1,6 +1,6 @@
 package com.example.exampleplugin.command;
 
-import com.example.exampleplugin.examplenetwork.ExampleNetworkResource;
+import com.example.exampleplugin.gasnetwork.GasNetworkResource;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.Message;
@@ -20,7 +20,7 @@ public class ClearAllBlockNetworks extends CommandBase {
     @Override
     protected void executeSync(@Nonnull CommandContext ctx) {
         Ref<EntityStore> storeRef = ctx.senderAsPlayerRef();
-        ExampleNetworkResource network = storeRef.getStore().getResource(ExampleNetworkResource.getResourceType());
+        GasNetworkResource network = storeRef.getStore().getResource(GasNetworkResource.getResourceType());
         network.clear();
         ctx.sendMessage(Message.raw("All block network metadata cleared!"));
     }

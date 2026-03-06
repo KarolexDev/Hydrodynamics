@@ -17,8 +17,8 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     public static final double R = 8.314; // J/(mol·K)
 
-    public static final double MIN_AMOUNT = 1e-10;  // minimale Teilchenzahl
-    public static final double MIN_ENERGY = 1e-10;  // minimale Energie
+    public static final double MIN_AMOUNT = 1e-10;  // min particle count (to avoid division by zero)
+    public static final double MIN_ENERGY = 1e-10;  // min energy count (to avoid division by zero)
 
     public static final BuilderCodec CODEC;
 
@@ -40,11 +40,11 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public double energy;   // J
 
     // Structural Parameters
-    public GasNetworkType type = GasNetworkType.TANK;
-    public double volume;           // m³  – für TANK
-    public double internalPressure; // Pa  – konstanter Druck für SOURCE/SINK
-    public double generationRate;   // mol/s – für SOURCE
-    public double consumptionRate;  // mol/s – für SINK
+    public GasNetworkType type = GasNetworkType.NONE;
+    public double volume;   // m³
+    public double internalPressure; // Pa - TODO: Rename field.
+    public double generationRate;   // TODO: rethink...
+    public double consumptionRate;  // same...
     public boolean isExtendable;
 
     public GasNetworkComponent() {
@@ -64,21 +64,14 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     public GasNetworkComponent(double amount, double energy) { this(amount, energy, GasNetworkType.NONE, 0, 0, 0, 0, false); }
 
-    // Physics
-    /** Ideale Gasgleichung p = nRT/V, für TANK und PIPE relevant */
     public double pressure() {
         return 2 * energy / (3 * volume);
     }
 
-    /** T = E / (n * Cv), Cv = 1.5R für einatomiges Gas */
     public double temperature() {
         if (amount <= 0) return 293.0;
         return energy / (amount * 1.5 * R);
     }
-
-    // -------------------------------------------------------------------------
-    // BlockNetworkComponent
-    // -------------------------------------------------------------------------
 
     @Override
     public GasNetworkComponent calculateFlux(float dt, GasNetworkComponent from, GasNetworkComponent to) {
@@ -93,23 +86,18 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         double pFrom = from.pressure();
         double pTo   = to.pressure();
 
-        // Symmetrisches Gleichgewicht: gemeinsamer Druck bei vollständigem Ausgleich
         double totalMoles  = from.amount + to.amount;
         double totalEnergy = from.energy + to.energy;
         double pEq = totalMoles * R / (from.volume / T1 + to.volume / T2);
 
-        // Gleichgewichts-Teilchenzahl für "from" bei pEq
         double nEq_from = pEq * from.volume / (R * T1);
 
-        // Wie weit sind wir noch vom Gleichgewicht entfernt?
         double deficit = from.amount - nEq_from;
 
-        // Druckdifferenz bestimmt die Transferrate
         double pDiff = pFrom - pTo;
         double pMax  = Math.max(pFrom, pTo);
         if (pMax <= 0) return flux;
 
-        // Sicherheitscheck: deficit und pDiff müssen dasselbe Vorzeichen haben
         if (deficit * pDiff < 0) return flux;
 
         double conductance = 5e3d;
@@ -118,7 +106,6 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
         flux.amount = deficit * alpha;
 
-        // Energiefluss: aus dem "gebenden" Knoten, mit dessen Temperatur gewichtet
         if (flux.amount > 0) {
             flux.amount = Math.min(flux.amount,  from.amount - MIN_AMOUNT);
             flux.energy = flux.amount * T1 * 1.5 * R;
@@ -190,7 +177,6 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     @Override
     public boolean requiresWorldUpdate() {
-        // Source und Sink erzeugen/entfernen Teilchen unabhängig vom Flux
         return type == GasNetworkType.SOURCE || type == GasNetworkType.SINK;
     }
 

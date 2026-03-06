@@ -5,7 +5,6 @@ import com.example.exampleplugin.blocknetwork.BlockNetwork;
 import com.example.exampleplugin.blocknetwork.BlockNetworkManager;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.*;
-import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.jspecify.annotations.Nullable;
 
