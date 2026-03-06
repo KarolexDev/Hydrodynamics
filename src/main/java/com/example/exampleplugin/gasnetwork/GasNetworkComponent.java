@@ -84,8 +84,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public GasNetworkComponent calculateFlux(float dt, GasNetworkComponent from, GasNetworkComponent to) {
         GasNetworkComponent flux = zero();
 
-        double totalVolume = from.volume + to.volume;
-        if (totalVolume <= 0) return flux;
+        if (from.volume <= 0 || to.volume <= 0) return flux;
 
         double T1 = from.temperature();
         double T2 = to.temperature();
@@ -93,25 +92,38 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
         double pFrom = from.pressure();
         double pTo   = to.pressure();
+
+        // Symmetrisches Gleichgewicht: gemeinsamer Druck bei vollständigem Ausgleich
+        double totalMoles  = from.amount + to.amount;
+        double totalEnergy = from.energy + to.energy;
+        double pEq = totalMoles * R / (from.volume / T1 + to.volume / T2);
+
+        // Gleichgewichts-Teilchenzahl für "from" bei pEq
+        double nEq_from = pEq * from.volume / (R * T1);
+
+        // Wie weit sind wir noch vom Gleichgewicht entfernt?
+        double deficit = from.amount - nEq_from;
+
+        // Druckdifferenz bestimmt die Transferrate
+        double pDiff = pFrom - pTo;
         double pMax  = Math.max(pFrom, pTo);
         if (pMax <= 0) return flux;
 
-        // Gleichgewichts-Teilchenzahl bei gleichem Druck
-        double pEq        = (from.amount + to.amount) * R / (from.volume / T1 + to.volume / T2);
-        double equilibrium = pEq * from.volume / (R * T1);
-        double deficit     = from.amount - equilibrium;
+        // Sicherheitscheck: deficit und pDiff müssen dasselbe Vorzeichen haben
+        if (deficit * pDiff < 0) return flux;
 
         double conductance = 5e3d;
-        double alpha = 1.0 - Math.exp(-conductance * Math.abs(pFrom - pTo) / pMax * dt);
-        alpha = Math.clamp(alpha, 0.0, 1.0);
+        double alpha = 1.0 - Math.exp(-conductance * Math.abs(pDiff) / pMax * dt);
+        alpha = Math.clamp(alpha, 0.0, 0.5); // MAX 0.5 verhindert Overshoot
 
         flux.amount = deficit * alpha;
 
+        // Energiefluss: aus dem "gebenden" Knoten, mit dessen Temperatur gewichtet
         if (flux.amount > 0) {
-            flux.amount = Math.min(flux.amount, from.amount - MIN_AMOUNT);
+            flux.amount = Math.min(flux.amount,  from.amount - MIN_AMOUNT);
             flux.energy = flux.amount * T1 * 1.5 * R;
         } else if (flux.amount < 0) {
-            flux.amount = Math.max(flux.amount, -(to.amount - MIN_AMOUNT));
+            flux.amount = Math.max(flux.amount, -(to.amount   - MIN_AMOUNT));
             flux.energy = flux.amount * T2 * 1.5 * R;
         }
 
