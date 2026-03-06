@@ -101,7 +101,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         double equilibrium = pEq * from.volume / (R * T1);
         double deficit     = from.amount - equilibrium;
 
-        double conductance = 1e3d;
+        double conductance = 5e3d;
         double alpha = 1.0 - Math.exp(-conductance * Math.abs(pFrom - pTo) / pMax * dt);
         alpha = Math.clamp(alpha, 0.0, 1.0);
 

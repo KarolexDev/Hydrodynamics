@@ -68,9 +68,6 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
         List<N> split = (List<N>) (List<?>) network.onBlockRemoved(origin, blockType, chunk);
 
         networks.addAll(split);
-        if (!split.isEmpty()) {
-            networks.remove(network);
-        }
         networks.removeIf(BlockNetwork::isEmpty);
     }
 
