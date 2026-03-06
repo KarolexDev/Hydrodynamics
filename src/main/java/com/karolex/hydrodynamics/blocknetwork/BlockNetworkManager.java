@@ -1,7 +1,6 @@
-package com.example.exampleplugin.blocknetwork;
+package com.karolex.hydrodynamics.blocknetwork;
 
-import com.example.exampleplugin.blocknetwork.BlockNetworkSerialization.*;
-import com.example.exampleplugin.util.BlockFaceEnum;
+import com.karolex.hydrodynamics.util.BlockUtil;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
@@ -32,9 +31,9 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
     }
 
     public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage, BlockType blockType) {
-        Set<Vector3i> occupied = BlockFaceEnum.getOccupiedPositions(blockType, origin, chunk);
+        Set<Vector3i> occupied = BlockUtil.getOccupiedPositions(blockType, origin, chunk);
         Set<Vector3i> externalConns = occupied.stream()
-                .flatMap(p -> BlockFaceEnum.getConnections(chunk, p).stream())
+                .flatMap(p -> BlockUtil.getConnections(chunk, p).stream())
                 .filter(c -> !occupied.contains(c))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 

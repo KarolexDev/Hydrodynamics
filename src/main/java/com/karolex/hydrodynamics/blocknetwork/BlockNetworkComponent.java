@@ -1,4 +1,4 @@
-package com.example.exampleplugin.blocknetwork;
+package com.karolex.hydrodynamics.blocknetwork;
 
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.world.World;

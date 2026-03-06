@@ -1,11 +1,11 @@
-package com.example.exampleplugin;
+package com.karolex.hydrodynamics;
 
-import com.example.exampleplugin.command.ClearAllBlockNetworks;
-import com.example.exampleplugin.command.ShowBlockNetworks;
-import com.example.exampleplugin.gasnetwork.GasNetworkComponent;
-import com.example.exampleplugin.gasnetwork.GasNetworkResource;
-import com.example.exampleplugin.gasnetwork.GasNetworkSystem;
-import com.example.exampleplugin.interaction.ConfigurePipeInteraction;
+import com.karolex.hydrodynamics.command.ClearAllBlockNetworks;
+import com.karolex.hydrodynamics.command.ShowBlockNetworks;
+import com.karolex.hydrodynamics.gasnetwork.GasNetworkComponent;
+import com.karolex.hydrodynamics.gasnetwork.GasNetworkResource;
+import com.karolex.hydrodynamics.gasnetwork.GasNetworkSystem;
+import com.karolex.hydrodynamics.interaction.ConfigurePipeInteraction;
 import com.hypixel.hytale.component.ComponentType;
 import com.hypixel.hytale.component.ResourceType;
 import com.hypixel.hytale.logger.HytaleLogger;
@@ -15,19 +15,19 @@ import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
-public class ExamplePlugin extends JavaPlugin {
+public class HydrodynamicsPlugin extends JavaPlugin {
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
-    private static ExamplePlugin instance;
+    private static HydrodynamicsPlugin instance;
     private ComponentType<ChunkStore, GasNetworkComponent> gasNetworkComponentType;
     private ResourceType<EntityStore, GasNetworkResource> gasNetworkResourceType;
 
-    public ExamplePlugin(JavaPluginInit init) {
+    public HydrodynamicsPlugin(JavaPluginInit init) {
         super(init);
         instance = this;
         LOGGER.atInfo().log("Hello from %s version %s", this.getName(), this.getManifest().getVersion().toString());
     }
 
-    public static ExamplePlugin getInstance() {
+    public static HydrodynamicsPlugin getInstance() {
         return instance;
     }
 

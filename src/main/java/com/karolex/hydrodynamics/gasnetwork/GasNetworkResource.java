@@ -1,8 +1,8 @@
-package com.example.exampleplugin.gasnetwork;
+package com.karolex.hydrodynamics.gasnetwork;
 
-import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.blocknetwork.BlockNetwork;
-import com.example.exampleplugin.blocknetwork.BlockNetworkManager;
+import com.karolex.hydrodynamics.HydrodynamicsPlugin;
+import com.karolex.hydrodynamics.blocknetwork.BlockNetwork;
+import com.karolex.hydrodynamics.blocknetwork.BlockNetworkManager;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
@@ -44,7 +44,7 @@ public class GasNetworkResource extends BlockNetworkManager<GasNetworkComponent,
     }
 
     public static ResourceType<EntityStore, GasNetworkResource> getResourceType() {
-        return ExamplePlugin.getInstance().geGasNetworkResourceType();
+        return HydrodynamicsPlugin.getInstance().geGasNetworkResourceType();
     }
 
     @Override

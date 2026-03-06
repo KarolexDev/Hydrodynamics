@@ -1,7 +1,7 @@
-package com.example.exampleplugin.gasnetwork;
+package com.karolex.hydrodynamics.gasnetwork;
 
-import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.blocknetwork.BlockNetworkComponent;
+import com.karolex.hydrodynamics.HydrodynamicsPlugin;
+import com.karolex.hydrodynamics.blocknetwork.BlockNetworkComponent;
 import com.hypixel.hytale.codec.Codec;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
@@ -235,7 +235,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         return copy();
     }
 
-    public static ComponentType<ChunkStore, GasNetworkComponent> getComponentType() { return ExamplePlugin.getInstance().getGasNetworkComponentType(); }
+    public static ComponentType<ChunkStore, GasNetworkComponent> getComponentType() { return HydrodynamicsPlugin.getInstance().getGasNetworkComponentType(); }
 
     public String toString() {
         return String.format("Amount: %.1f mol\nEnergy: %.1f kJ\n\nPressure: %.1f bar\nTemperature: %.1f °C\n\nVolume: %.2f m³",

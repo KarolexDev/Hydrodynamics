@@ -1,8 +1,8 @@
-package com.example.exampleplugin.interaction;
+package com.karolex.hydrodynamics.interaction;
 
-import com.example.exampleplugin.ExamplePlugin;
-import com.example.exampleplugin.gasnetwork.GasNetworkComponent;
-import com.example.exampleplugin.gasnetwork.GasNetworkResource;
+import com.karolex.hydrodynamics.HydrodynamicsPlugin;
+import com.karolex.hydrodynamics.gasnetwork.GasNetworkComponent;
+import com.karolex.hydrodynamics.gasnetwork.GasNetworkResource;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
@@ -58,8 +58,8 @@ public class ConfigurePipeInteraction extends SimpleInteraction {
             Ref<ChunkStore> componentRef = worldChunk.getBlockComponentEntity(targetVec.x, targetVec.y, targetVec.z);
             if (componentRef == null) { return; }
 
-            if (world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getGasNetworkComponentType()) == null) { return; }
-            GasNetworkComponent exampleComponent = (GasNetworkComponent) world.getChunkStore().getStore().getComponent(componentRef, ExamplePlugin.getInstance().getGasNetworkComponentType());
+            if (world.getChunkStore().getStore().getComponent(componentRef, HydrodynamicsPlugin.getInstance().getGasNetworkComponentType()) == null) { return; }
+            GasNetworkComponent exampleComponent = (GasNetworkComponent) world.getChunkStore().getStore().getComponent(componentRef, HydrodynamicsPlugin.getInstance().getGasNetworkComponentType());
 
             GasNetworkResource network = store.getResource(GasNetworkResource.getResourceType());
 

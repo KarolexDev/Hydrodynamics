@@ -1,4 +1,4 @@
-package com.example.exampleplugin.gasnetwork;
+package com.karolex.hydrodynamics.gasnetwork;
 
 public enum GasNetworkType {
     NONE,

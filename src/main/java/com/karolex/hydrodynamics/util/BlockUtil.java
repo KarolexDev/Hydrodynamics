@@ -1,7 +1,5 @@
-package com.example.exampleplugin.util;
+package com.karolex.hydrodynamics.util;
 
-import com.hypixel.hytale.math.shape.Box;
-import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blockhitbox.BlockBoundingBoxes;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
@@ -14,7 +12,7 @@ import com.hypixel.hytale.server.core.util.FillerBlockUtil;
 import java.lang.reflect.Field;
 import java.util.*;
 
-public class BlockFaceEnum {
+public class BlockUtil {
 
     public static final byte NONE   = (byte) 0;
     public static final byte WEST   = (byte) 1;
@@ -25,9 +23,9 @@ public class BlockFaceEnum {
     public static final byte SOUTH  = (byte) 32;
 
     public static final byte[] FACE_BITS = {
-            BlockFaceEnum.WEST, BlockFaceEnum.EAST,
-            BlockFaceEnum.DOWN, BlockFaceEnum.UP,
-            BlockFaceEnum.NORTH, BlockFaceEnum.SOUTH
+            BlockUtil.WEST, BlockUtil.EAST,
+            BlockUtil.DOWN, BlockUtil.UP,
+            BlockUtil.NORTH, BlockUtil.SOUTH
     };
 
     public static final Vector3i[] FACE_OFFSETS = {
@@ -50,7 +48,7 @@ public class BlockFaceEnum {
         }
     }
 
-    BlockFaceEnum() { /* Utility Class */ }
+    BlockUtil() { /* Utility Class */ }
 
     public static byte fromVector3i(Vector3i vec) {
         if (vec.x < 0) return WEST;
@@ -76,18 +74,18 @@ public class BlockFaceEnum {
 
     public static byte readFromWorld(WorldChunk chunk, Vector3i pos) {
         BlockType blockType = chunk.getBlockType(pos);
-        if (blockType == null) return BlockFaceEnum.NONE;
+        if (blockType == null) return BlockUtil.NONE;
 
         ConnectedBlockRuleSet rs = blockType.getConnectedBlockRuleSet();
         if (!(rs instanceof CustomTemplateConnectedBlockRuleSet ctrs))
-            return BlockFaceEnum.NONE;
+            return BlockUtil.NONE;
 
         CustomConnectedBlockTemplateAsset tmpl = ctrs.getShapeTemplateAsset();
-        if (tmpl == null) return BlockFaceEnum.NONE;
+        if (tmpl == null) return BlockUtil.NONE;
 
         int blockTypeIndex = BlockType.getAssetMap().getIndex(blockType.getId());
         Set<String> shapeNames = ctrs.getShapesForBlockType(blockTypeIndex);
-        if (shapeNames == null || shapeNames.isEmpty()) return BlockFaceEnum.NONE;
+        if (shapeNames == null || shapeNames.isEmpty()) return BlockUtil.NONE;
 
         Map<String, ConnectedBlockShape> connectedBlockShapes;
         try {
@@ -99,7 +97,7 @@ public class BlockFaceEnum {
 
         String shapeName = shapeNames.iterator().next();
         ConnectedBlockShape shape = connectedBlockShapes.get(shapeName);
-        if (shape == null || shape.getFaceTags() == null) return BlockFaceEnum.NONE;
+        if (shape == null || shape.getFaceTags() == null) return BlockUtil.NONE;
 
         RotationTuple rotation = chunk.getRotation(pos.x, pos.y, pos.z);
         byte mask = 0;
@@ -110,7 +108,7 @@ public class BlockFaceEnum {
                     rotation.pitch(),
                     rotation.roll()
             );
-            byte f = BlockFaceEnum.fromVector3i(worldDir);
+            byte f = BlockUtil.fromVector3i(worldDir);
             mask = (byte) (mask | f);
         }
         return mask;

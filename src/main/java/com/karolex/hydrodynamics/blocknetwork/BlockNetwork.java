@@ -1,7 +1,7 @@
-package com.example.exampleplugin.blocknetwork;
+package com.karolex.hydrodynamics.blocknetwork;
 
-import com.example.exampleplugin.util.BlockFaceEnum;
-import com.example.exampleplugin.blocknetwork.BlockNetworkSerialization.*;
+import com.karolex.hydrodynamics.util.BlockUtil;
+import com.karolex.hydrodynamics.blocknetwork.BlockNetworkSerialization.*;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
@@ -196,7 +196,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     public void onBlockPlaced(Vector3i origin, BlockType blockType, WorldChunk chunk, C storage) {
         // 1.   Check all positions occupied by the block.
-        Set<Vector3i> occupiedSet = BlockFaceEnum.getOccupiedPositions(blockType, origin, chunk);
+        Set<Vector3i> occupiedSet = BlockUtil.getOccupiedPositions(blockType, origin, chunk);
 
         // 2.   Sanity-Check
         for (Vector3i p : occupiedSet) {
@@ -218,7 +218,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         //      contacts[neighbour] = { ourContactBlock, theirContactBlock }
         Map<Node, Vector3i[]> neighbourContacts = new LinkedHashMap<>();
         for (Vector3i blockPos : occupiedSet) {
-            for (Vector3i connPos : BlockFaceEnum.getConnections(chunk, blockPos)) {
+            for (Vector3i connPos : BlockUtil.getConnections(chunk, blockPos)) {
                 if (occupiedSet.contains(connPos)) continue;
                 Node neighbour = nodeMap.get(connPos);
                 if (neighbour == null || neighbour == newNode) continue;
@@ -244,7 +244,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             if (currentNew.storage.shouldMerge(neighbour.storage)) {
                 if (currentNew.storage.isPipe() && neighbour.storage.isPipe()) {
                     int newExternal       = countExternalConnections(currentNew.blocks, chunk);
-                    int neighbourExternal = BlockFaceEnum.getConnections(chunk, theirPos).size();
+                    int neighbourExternal = BlockUtil.getConnections(chunk, theirPos).size();
 
                     if (newExternal <= 2 && neighbourExternal <= 2) {
                         mergeInto(currentNew, neighbour);
@@ -278,12 +278,12 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         if (removedNode == null) return Collections.emptyList();
 
         // 1.   All positions occupied by the block.
-        Set<Vector3i> occupiedSet = BlockFaceEnum.getOccupiedPositions(blockType, origin, chunk);
+        Set<Vector3i> occupiedSet = BlockUtil.getOccupiedPositions(blockType, origin, chunk);
 
         // 2.   Save affected neighbours before making any changes.
         Set<Node> affectedNeighbours = new LinkedHashSet<>();
         for (Vector3i blockPos : occupiedSet) {
-            for (Vector3i offset : BlockFaceEnum.FACE_OFFSETS) {
+            for (Vector3i offset : BlockUtil.FACE_OFFSETS) {
                 Vector3i neighbourPos = new Vector3i(blockPos).add(offset);
                 if (occupiedSet.contains(neighbourPos)) continue;
                 Node nb = nodeMap.get(neighbourPos);
@@ -431,7 +431,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     private int countPhysicalConnections(Set<Vector3i> blockSet, WorldChunk chunk) {
         return (int) blockSet.stream()
-                .flatMap(p -> BlockFaceEnum.getConnections(chunk, p).stream())
+                .flatMap(p -> BlockUtil.getConnections(chunk, p).stream())
                 .filter(c -> !blockSet.contains(c))
                 .distinct()
                 .count();
@@ -439,7 +439,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     private int countExternalConnections(Set<Vector3i> blockSet, WorldChunk chunk) {
         return (int) blockSet.stream()
-                .flatMap(p -> BlockFaceEnum.getConnections(chunk, p).stream())
+                .flatMap(p -> BlockUtil.getConnections(chunk, p).stream())
                 .filter(c -> !blockSet.contains(c))
                 .distinct()
                 .count();
@@ -519,7 +519,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             bfs.add(seed);
             while (!bfs.isEmpty()) {
                 Vector3i cur = bfs.poll();
-                for (Vector3i offset : BlockFaceEnum.FACE_OFFSETS) {
+                for (Vector3i offset : BlockUtil.FACE_OFFSETS) {
                     Vector3i adj = new Vector3i(cur).add(offset);
                     if (unvisited.remove(adj)) {
                         seg.blocks.add(new Vector3i(adj));
@@ -544,7 +544,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             Vector3i segBoundary = null;
             outer:
             for (Vector3i b : seg.blocks) {
-                for (Vector3i offset : BlockFaceEnum.FACE_OFFSETS) {
+                for (Vector3i offset : BlockUtil.FACE_OFFSETS) {
                     if (new Vector3i(b).add(offset).equals(junctionPos)) {
                         adjacentToJunction = true;
                         segBoundary = new Vector3i(b);
@@ -576,7 +576,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         bfs.add(seed);
         while (!bfs.isEmpty()) {
             Vector3i cur = bfs.poll();
-            for (Vector3i offset : BlockFaceEnum.FACE_OFFSETS) {
+            for (Vector3i offset : BlockUtil.FACE_OFFSETS) {
                 Vector3i adj = new Vector3i(cur).add(offset);
                 if (unvisited.remove(adj)) {
                     seg.blocks.add(new Vector3i(adj));
@@ -645,8 +645,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     }
 
     public boolean isAdjacentTo(Vector3i pos) {
-        for (int i = 0; i < BlockFaceEnum.FACE_OFFSETS.length; i++) {
-            if (nodeMap.containsKey(new Vector3i(pos).add(BlockFaceEnum.FACE_OFFSETS[i]))) return true;
+        for (int i = 0; i < BlockUtil.FACE_OFFSETS.length; i++) {
+            if (nodeMap.containsKey(new Vector3i(pos).add(BlockUtil.FACE_OFFSETS[i]))) return true;
         }
         return false;
     }

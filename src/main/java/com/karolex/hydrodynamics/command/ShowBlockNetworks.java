@@ -1,6 +1,6 @@
-package com.example.exampleplugin.command;
+package com.karolex.hydrodynamics.command;
 
-import com.example.exampleplugin.gasnetwork.GasNetworkResource;
+import com.karolex.hydrodynamics.gasnetwork.GasNetworkResource;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.Message;

@@ -1,4 +1,4 @@
-package com.example.exampleplugin.gasnetwork;
+package com.karolex.hydrodynamics.gasnetwork;
 
 import com.hypixel.hytale.component.*;
 import com.hypixel.hytale.component.query.Query;

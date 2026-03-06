@@ -1,4 +1,4 @@
-package com.example.exampleplugin.blocknetwork;
+package com.karolex.hydrodynamics.blocknetwork;
 
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
