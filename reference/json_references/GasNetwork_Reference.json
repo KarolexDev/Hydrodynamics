@@ -1,0 +1,65 @@
+{
+  "Components": {
+
+    "StorageComponent": {
+      "type": "storage",
+      "volume": 1.0,
+      "initialParticles": 0.0,
+      "initialEnergy": 500.0
+    },
+
+    "SourceComponent": {
+      "type": "source",
+      "volume": 0.5,
+      "sourcePressure": 200000.0,
+      "flowFactor": 0.001
+    },
+
+    "SinkComponent": {
+      "type": "sink",
+      "volume": 0.5,
+      "sourcePressure": 50000.0,
+      "flowFactor": 0.001
+    },
+
+    "ReactorComponent": {
+      "type": "reactor",
+      "volume": 2.0,
+      "initialParticles": 10.0,
+      "initialEnergy": 1000.0,
+      "reactantCoefficients": [2.0, 1.0],
+      "productCoefficients": [2.0],
+      "reactionEnergy": 484000.0,
+      "reactionRate": 0.01
+    },
+
+    "HeatExchangerComponent": {
+      "type": "heat_exchanger",
+      "volume": 1.0,
+      "initialParticles": 5.0,
+      "initialEnergy": 2000.0,
+      "ambientTemperature": 293.0,
+      "heatTransferFactor": 10.0
+    },
+
+    "DecompressorComponent": {
+      "type": "decompressor",
+      "volume": 0.1,
+      "flowSuppression": 0.99
+    },
+
+    "PumpComponent": {
+      "type": "pump",
+      "volume": 0.5,
+      "targetPressureDelta": 50000.0,
+      "pumpFlowFactor": 0.005
+    },
+
+    "ValveComponent": {
+      "type": "valve",
+      "volume": 0.2,
+      "open": true
+    }
+
+  }
+}

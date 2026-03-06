@@ -1,15 +1,16 @@
 package com.example.exampleplugin.util;
 
 import com.hypixel.hytale.math.vector.Vector3i;
+import com.hypixel.hytale.server.core.asset.type.blockhitbox.BlockBoundingBoxes;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.Rotation;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.RotationTuple;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.hypixel.hytale.server.core.universe.world.connectedblocks.*;
+import com.hypixel.hytale.server.core.util.FillerBlockUtil;
 
 import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class BlockFaceEnum {
 
@@ -111,5 +112,32 @@ public class BlockFaceEnum {
             mask = (byte) (mask | f);
         }
         return mask;
+    }
+
+    public static List<Vector3i> getConnections(WorldChunk chunk, Vector3i pos) {
+        byte mask = readFromWorld(chunk, pos);
+        List<Vector3i> result = new ArrayList<>();
+        for (int i = 0; i < FACE_BITS.length; i++) {
+            if ((mask & FACE_BITS[i]) != 0) {
+                result.add(new Vector3i(pos).add(FACE_OFFSETS[i]));
+            }
+        }
+        return result;
+    }
+
+    public static Set<Vector3i> getOccupiedPositions(BlockType blockType, Vector3i origin, WorldChunk chunk) {
+        if (blockType == null) return Set.of(origin);
+
+        BlockBoundingBoxes hitbox = BlockBoundingBoxes.getAssetMap().getAsset(blockType.getHitboxTypeIndex());
+        if (hitbox == null || !hitbox.protrudesUnitBox()) return Set.of(origin);
+
+        RotationTuple rotation = chunk.getRotation(origin.x, origin.y, origin.z);
+        BlockBoundingBoxes.RotatedVariantBoxes variant = hitbox.get(rotation.yaw(), rotation.pitch(), rotation.roll());
+
+        Set<Vector3i> result = new LinkedHashSet<>();
+        FillerBlockUtil.forEachFillerBlock(variant, (x, y, z) ->
+                result.add(new Vector3i(origin.x + x, origin.y + y, origin.z + z))
+        );
+        return result;
     }
 }
