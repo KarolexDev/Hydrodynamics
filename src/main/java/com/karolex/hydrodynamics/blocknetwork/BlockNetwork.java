@@ -35,7 +35,33 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     private final Set<Node> nodesToUpdate = new HashSet<>();
 
     void tick(float dt, World world) {
-        // TODO
+        // TODO: Implement Update-Wave propagation using HashMaps instead of clunky classes.
+        // -> DONE
+        // TODO: Implement Propagation Delay.
+
+        Set<Node> newNodesToUpdate = new HashSet<>();
+
+        Set<Edge> edgesToUpdate = new HashSet<>(); // nvm, it is necessary...
+
+        for (Node node : nodesToUpdate) {
+            node.update(dt, 0); // TODO: remove second argument, if necessary
+
+            for (Edge edge : node.connectedEdges) {
+                Node otherNode = edge.other(node);
+                if (visitedNodes.contains(otherNode)) continue;
+                edgesToUpdate.add(edge);
+                newNodesToUpdate.add(otherNode);
+            }
+        }
+
+        for (Edge edge : edgesToUpdate) edge.update(dt);
+
+        // Essentially visitedNodes = nodesToUpdate:
+        visitedNodes.clear();
+        visitedNodes.addAll(nodesToUpdate);
+
+        nodesToUpdate.clear();
+        nodesToUpdate.addAll(newNodesToUpdate);
     }
 
     final class Node {
@@ -111,6 +137,10 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             if (node == from) return to;
             if (node == to)   return from;
             return null;
+        }
+
+        public boolean connectedTo(Node node) {
+            return (nodeMap.get(this.to) == node) || (nodeMap.get(this.from) == node);
         }
     }
 

@@ -3,7 +3,7 @@ plugins {
     id("hytale-mod") version "0.+"
 }
 
-group = "com.example"
+group = "com.karolex"
 version = property("mod_version") as String
 val javaVersion = 25
 
