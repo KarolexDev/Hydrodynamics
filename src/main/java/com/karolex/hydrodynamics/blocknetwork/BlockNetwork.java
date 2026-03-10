@@ -34,18 +34,14 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     private final Set<Node> visitedNodes = new HashSet<>();
     private final Set<Node> nodesToUpdate = new HashSet<>();
 
-    void tick(float dt, World world) {
-        // TODO: Implement Update-Wave propagation using HashMaps instead of clunky classes.
-        // -> DONE
-        // TODO: Implement Propagation Delay.
+    void tick(float dt) {
+        // TODO: For the future: Implement propagation delay.
 
         Set<Node> newNodesToUpdate = new HashSet<>();
-
-        Set<Edge> edgesToUpdate = new HashSet<>(); // nvm, it is necessary...
+        Set<Edge> edgesToUpdate = new HashSet<>();
 
         for (Node node : nodesToUpdate) {
-            node.update(dt, 0); // TODO: remove second argument, if necessary
-
+            node.update();
             for (Edge edge : node.connectedEdges) {
                 Node otherNode = edge.other(node);
                 if (visitedNodes.contains(otherNode)) continue;
@@ -56,7 +52,6 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         for (Edge edge : edgesToUpdate) edge.update(dt);
 
-        // Essentially visitedNodes = nodesToUpdate:
         visitedNodes.clear();
         visitedNodes.addAll(nodesToUpdate);
 
@@ -69,14 +64,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         final Set<Vector3i> blocks = new LinkedHashSet<>();
         final Set<Edge> connectedEdges = new HashSet<>();
 
-        private float timeSinceLastUpdate = 0f;
-        private float lastChangeRate = 0f;
-        private int lastAppliedWaveTick = -1;
+        float propagationDelay = 0f;
 
-        Node update(float dt, int waveTick) {
-            if (lastAppliedWaveTick == waveTick) return this;
-            lastAppliedWaveTick = waveTick;
-
+        Node update() {
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
                     storage.del(edge.flux);
@@ -85,25 +75,6 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 }
             }
             return this;
-        }
-
-        void recordChangeRate(float changeRate) {
-            this.lastChangeRate = changeRate;
-        }
-
-        float computeUpdateInterval() {
-            if (lastChangeRate <= 0f) return MAX_UPDATE_INTERVAL;
-            return Math.clamp(MIN_UPDATE_INTERVAL / lastChangeRate, MIN_UPDATE_INTERVAL, MAX_UPDATE_INTERVAL);
-        }
-
-        public boolean triggersUpdates() {
-            return timeSinceLastUpdate >= computeUpdateInterval();
-        }
-
-        public int getUpdateTickRate() { return 1; }
-
-        public float computeDelay(float changeRate) {
-            return storage.computeDelay(changeRate);
         }
     }
 

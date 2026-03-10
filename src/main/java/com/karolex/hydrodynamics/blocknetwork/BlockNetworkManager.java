@@ -27,7 +27,7 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
     }
 
     public void tick(float dt, World world) {
-        for (N network : networks) network.tick(dt, world);
+        for (N network : networks) network.tick(dt);
     }
 
     public void onBlockPlaced(Vector3i origin, WorldChunk chunk, C storage, BlockType blockType) {
