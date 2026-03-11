@@ -22,6 +22,8 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     public static final BuilderCodec CODEC;
 
+    public boolean isFrozen = false;
+
     static {
         BuilderCodec.Builder<GasNetworkComponent> builder = BuilderCodec.builder(GasNetworkComponent.class, GasNetworkComponent::new);
         builder = (BuilderCodec.Builder<GasNetworkComponent>) builder.append(new KeyedCodec("InitialAmount",          Codec.DOUBLE),                          (c, v) -> c.amount          = v, (c) -> c.amount).add();
@@ -177,48 +179,33 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     @Override
     public boolean requiresWorldUpdate() {
-        return type == GasNetworkType.SOURCE || type == GasNetworkType.SINK;
+        return false;
     }
 
     @Override
-    public void onWorldUpdate(Vector3i pos, World world) {
-        switch (type) {
-            case SOURCE -> {
-                double dn = generationRate * (internalPressure - pressure());
-                double dEnergy = dn * 1.5 * R * temperature();
+    public void onWorldUpdate(Vector3i pos, World world) {}
 
-                GasNetworkComponent flux = new GasNetworkComponent(
-                        dn,
-                        dEnergy
-                );
+    @Override
+    public float computeDelay(float dt, GasNetworkComponent previous) {
+        double dndt = Math.abs((previous.amount - amount) / dt);
+        double dEdt = Math.abs((previous.energy - energy) / dt);
 
-                this.add(flux);
-            }
-            case SINK   -> {    // TODO
-                if (amount > 0) {
-                    double fraction = Math.min(consumptionRate, amount) / amount;
-                    energy = Math.max(0, energy * (1 - fraction));
-                    amount = Math.max(0, amount - consumptionRate);
-                }
-            }
-        }
+        // if (dndt < 1e-12 && dEdt < 1e-12) return 5.0f; // ruhender Zustand → langer Delay
+
+//        float dt1 = (dndt > 1e-12) ? (float)(1e-3 * amount / dndt) : Float.MAX_VALUE;
+//        float dt2 = (dEdt > 1e-12) ? (float)(1e-3 * energy / dEdt) : Float.MAX_VALUE;
+
+        float dt1 = (float)(1e-3 * amount / dndt);
+        float dt2 = (float)(1e-3 * energy / dEdt);
+
+        return Math.min(dt1, dt2);
+
+        // return Math.clamp(Math.min(dt1, dt2), 0.05f, 5.0f);
     }
 
     @Override
-    public float changeRate(GasNetworkComponent previous) {
-        double dn = Math.abs(amount - previous.amount);
-        double dE = Math.abs(energy - previous.energy);
-        double normN = amount > 0 ? dn / amount : dn;
-        double normE = energy > 0 ? dE / energy : dE;
-        return (float) Math.max(normN, normE);
-    }
-
-    @Override
-    public float computeDelay(float changeRate) {
-        if (changeRate < 0.001f) return 1.0f;
-        if (changeRate < 0.01f)  return 0.5f;
-        if (changeRate < 0.1f)   return 0.1f;
-        return 0.0f;
+    public boolean isFrozen() {
+        return isFrozen;
     }
 
     @Override
@@ -240,5 +227,53 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public String toString() {
         return String.format("Amount: %.1f mol\nEnergy: %.1f kJ\n\nPressure: %.1f bar\nTemperature: %.1f °C\n\nVolume: %.2f m³",
                 this.amount, this.energy * 1e-3, this.pressure() * 1e-5, this.temperature() - 273.15, this.volume);
+    }
+
+    public void tick(float dt) {
+        if (isFrozen) return;
+
+        switch (type) {
+            case SOURCE -> {
+                if (volume <= 0) break;
+                double pActual = pressure();
+                double pDiff = internalPressure - pActual;
+                if (pDiff <= 0) break;
+
+                double T = temperature();
+                if (T <= 0) break;
+
+                double targetAmount = internalPressure * volume / (R * T);
+                double deficit = targetAmount - amount;
+
+                double pMax = Math.max(internalPressure, pActual);
+                double alpha = 1.0 - Math.exp(-5e3d * pDiff / pMax * dt);
+                alpha = Math.clamp(alpha, 0.0, 0.5);
+
+                double dn = Math.clamp(deficit * alpha, 0.0, generationRate * dt);
+                amount += dn;
+                energy += dn * T * 1.5 * R;
+            }
+            case SINK -> {
+                if (volume <= 0) break;
+                double pActual = pressure();
+                double pDiff = pActual - internalPressure;
+                if (pDiff <= 0) break;
+
+                double T = temperature();
+                if (T <= 0) break;
+
+                double targetAmount = internalPressure * volume / (R * T);
+                double surplus = amount - targetAmount;
+
+                double pMax = Math.max(internalPressure, pActual);
+                double alpha = 1.0 - Math.exp(-5e3d * pDiff / pMax * dt);
+                alpha = Math.clamp(alpha, 0.0, 0.5);
+
+                double dn = Math.clamp(surplus * alpha, 0.0, consumptionRate * dt);
+                amount = Math.max(MIN_AMOUNT, amount - dn);
+                energy = Math.max(MIN_ENERGY, energy - dn * T * 1.5 * R);
+            }
+            case TANK, PIPE, NONE -> {}
+        }
     }
 }

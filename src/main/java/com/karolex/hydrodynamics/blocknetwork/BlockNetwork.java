@@ -31,32 +31,63 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         this.factory = factory;
     }
 
-    private final Set<Node> visitedNodes = new HashSet<>();
-    private final Set<Node> nodesToUpdate = new HashSet<>();
+    private final Map<Node, Float> pendingNodes = new LinkedHashMap<>();
+    private final Map<Node, Node> cameFrom = new HashMap<>();
 
-    void tick(float dt) {
-        // TODO: For the future: Implement propagation delay.
+    void tick(float dt, World world) {
+        if (world == null) return;
 
-        Set<Node> newNodesToUpdate = new HashSet<>();
+        // 1. Decrement all delays and collect due nodes
+        Set<Node> toUpdate = new HashSet<>();
+        pendingNodes.replaceAll((node, remaining) -> remaining - dt);
+        pendingNodes.entrySet().removeIf(e -> {
+            if (e.getValue() <= 0) { toUpdate.add(e.getKey()); return true; }
+            return false;
+        });
+
+        // 2. Propagate wave
         Set<Edge> edgesToUpdate = new HashSet<>();
+        for (Node node : toUpdate) {
+            if (node.storage == null) continue;
 
-        for (Node node : nodesToUpdate) {
-            node.update();
+            C storageBefore = node.storage.copy();
+            node.update(dt, world);
+
+            Node origin = cameFrom.remove(node); // von wo kam diese Wellenfront
+
             for (Edge edge : node.connectedEdges) {
-                Node otherNode = edge.other(node);
-                if (visitedNodes.contains(otherNode)) continue;
+                Node neighbor = edge.other(node);
+                if (neighbor == null || neighbor.storage == null) continue;
+                if (neighbor == origin) continue; // nicht zurückpropagieren
+
                 edgesToUpdate.add(edge);
-                newNodesToUpdate.add(otherNode);
+                float delay = neighbor.storage.computeDelay(dt, storageBefore);
+
+                Float existing = pendingNodes.get(neighbor);
+                if (existing == null || delay < existing) {
+                    pendingNodes.put(neighbor, delay);
+                    cameFrom.put(neighbor, node); // aktueller Node wird cameFrom des Nachbarn
+                }
             }
         }
 
         for (Edge edge : edgesToUpdate) edge.update(dt);
 
-        visitedNodes.clear();
-        visitedNodes.addAll(nodesToUpdate);
+        // 4. Interface hook
+        onTick(dt, world);
+    }
 
-        nodesToUpdate.clear();
-        nodesToUpdate.addAll(newNodesToUpdate);
+    /** Triggered once per tick. Use triggerWave(node) to start update waves. */
+    public abstract void onTick(float dt, World world);
+
+    public void triggerWave(Node node) {
+        pendingNodes.merge(node, 0f, Math::min);
+        cameFrom.remove(node); // kein Ursprung → keine Rückpropagierungssperre
+    }
+
+    public void triggerWave(Node node, float delay) {
+        pendingNodes.merge(node, delay, Math::min);
+        cameFrom.remove(node);
     }
 
     final class Node {
@@ -66,7 +97,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         float propagationDelay = 0f;
 
-        Node update() {
+        Node update(float dt, World world) {
+            C storageBefore = storage.copy();
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
                     storage.del(edge.flux);
@@ -74,6 +106,24 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                     storage.add(edge.flux);
                 }
             }
+
+            // Do whatever it gotta do...
+            storage.tick(dt);
+
+            if (!storage.isFrozen()) {
+                float delay = storage.computeDelay(dt, storageBefore);
+                pendingNodes.merge(this, delay, Math::min);
+            }
+
+            // World update hook
+            if (storage.requiresWorldUpdate()) {
+                for (Vector3i pos : blocks) {
+                    final Vector3i capturedPos = new Vector3i(pos);
+                    final C capturedStorage = storage;
+                    capturedStorage.onWorldUpdate(capturedPos, world);
+                }
+            }
+
             return this;
         }
     }
@@ -174,7 +224,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                         addEdge(ourPos, theirPos, currentNew.storage);
                         Node refreshedNeighbour = nodeMap.get(theirPos);
                         if (refreshedNeighbour != null)
-                            nodesToUpdate.add(refreshedNeighbour);
+                            triggerWave(refreshedNeighbour);
                     }
                 } else {
                     // Tanks, for example.
@@ -183,13 +233,13 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             } else {
                 // Different network component types.
                 addEdge(ourPos, theirPos, currentNew.storage);
-                nodesToUpdate.add(neighbour);
+                triggerWave(neighbour);
             }
         }
 
         // 6.   Trigger update wave.
         Node finalNew = nodeMap.get(origin);
-        if (finalNew != null) nodesToUpdate.add(finalNew);
+        if (finalNew != null) triggerWave(finalNew);
 
         runOnBlockAdded();
     }
@@ -254,7 +304,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         // 6.   Trigger update waves at affected neighbours.
         for (Node nb : affectedNeighbours) {
             if (nodes.contains(nb) && nb.storage != null)
-                nodesToUpdate.add(nb);
+                triggerWave(nb);
         }
 
         // 7.   Test for coherency of the network.
@@ -271,6 +321,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         }
         node.connectedEdges.clear();
         nodes.remove(node);
+        pendingNodes.remove(node);
     }
 
     /**
@@ -583,7 +634,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         nodeMap.clear();
         nodes.forEach(node -> node.connectedEdges.clear());
         nodes.clear();
-        nodesToUpdate.clear();
+        pendingNodes.clear();
+        cameFrom.clear();
     }
 
     public abstract void runOnBlockAdded();
