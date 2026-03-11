@@ -14,16 +14,13 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     C zero();
 
     // Misc.
-    boolean requiresWorldUpdate();
-    void onWorldUpdate(Vector3i pos, World world);
+    default boolean requiresWorldUpdate() { return false; }
+    default void onWorldUpdate(Vector3i pos, World world) {}
+
     C copy();
 
-
-    float computeDelay(float dt, C before);
     boolean shouldMerge(C other);
     default boolean isPipe() { return false; };
-    default boolean isFrozen() { return false; };
 
-    // Does Block-Logic
     void tick(float dt);
 }

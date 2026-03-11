@@ -22,8 +22,6 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     public static final BuilderCodec CODEC;
 
-    public boolean isFrozen = false;
-
     static {
         BuilderCodec.Builder<GasNetworkComponent> builder = BuilderCodec.builder(GasNetworkComponent.class, GasNetworkComponent::new);
         builder = (BuilderCodec.Builder<GasNetworkComponent>) builder.append(new KeyedCodec("InitialAmount",          Codec.DOUBLE),                          (c, v) -> c.amount          = v, (c) -> c.amount).add();
@@ -178,37 +176,6 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     }
 
     @Override
-    public boolean requiresWorldUpdate() {
-        return false;
-    }
-
-    @Override
-    public void onWorldUpdate(Vector3i pos, World world) {}
-
-    @Override
-    public float computeDelay(float dt, GasNetworkComponent previous) {
-        double dndt = Math.abs((previous.amount - amount) / dt);
-        double dEdt = Math.abs((previous.energy - energy) / dt);
-
-        // if (dndt < 1e-12 && dEdt < 1e-12) return 5.0f; // ruhender Zustand → langer Delay
-
-//        float dt1 = (dndt > 1e-12) ? (float)(1e-3 * amount / dndt) : Float.MAX_VALUE;
-//        float dt2 = (dEdt > 1e-12) ? (float)(1e-3 * energy / dEdt) : Float.MAX_VALUE;
-
-        float dt1 = (float)(1e-3 * amount / dndt);
-        float dt2 = (float)(1e-3 * energy / dEdt);
-
-        return Math.min(dt1, dt2);
-
-        // return Math.clamp(Math.min(dt1, dt2), 0.05f, 5.0f);
-    }
-
-    @Override
-    public boolean isFrozen() {
-        return isFrozen;
-    }
-
-    @Override
     public boolean shouldMerge(GasNetworkComponent other) {
         return this.isExtendable && other.isExtendable && (this.type == other.type);    // TODO: could make stricter, i.e. require same BlockType. Temp. solution only!
     }
@@ -230,8 +197,6 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     }
 
     public void tick(float dt) {
-        if (isFrozen) return;
-
         switch (type) {
             case SOURCE -> {
                 if (volume <= 0) break;
