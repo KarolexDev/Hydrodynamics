@@ -38,36 +38,17 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     void tick(World world, TimeResource time) {
         Instant now = time.getNow();
         Set<Node> newVisitedNodes = new HashSet<>();
-        Set<Node> nodesToProcess = new HashSet<>();
 
-        // Sammle alle fälligen Nodes
         while (!schedule.isEmpty() && !schedule.peekEarliestTimestamp().isAfter(now)) {
             Node node = schedule.pollEarliest();
             newVisitedNodes.add(node);
-            nodesToProcess.add(node);
-        }
 
-        // Phase 1: Edges updaten (Flux berechnen)
-        //          Nur Edges deren mindestens ein Node in diesem Tick dran ist
-        Set<Edge> edgesToUpdate = new HashSet<>();
-        for (Node node : nodesToProcess) {
+            // Edges zuerst updaten, dann Node
             for (Edge edge : node.connectedEdges) {
-                if (visitedNodes.contains(edge.other(node))) continue;
-                edgesToUpdate.add(edge);
+                if (!visitedNodes.contains(edge.other(node))) edge.update();
             }
-        }
-        for (Edge edge : edgesToUpdate) {
-            // dt vom from-Node bestimmen
-            Node fromNode = nodeMap.get(edge.from);
-            if (fromNode == null) continue;
-            float dt = (float) Duration.between(fromNode.lastUpdated, now).toNanos() * 1e-9f;
-            edge.update(dt);
-        }
 
-        // Phase 2: Nodes updaten + Nachbarn einplanen
-        for (Node node : nodesToProcess) {
             Duration delay = node.update(now, world);
-
             if (delay != null) schedule.insert(node, now.plus(delay));
 
             for (Edge edge : node.connectedEdges) {
@@ -138,11 +119,11 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             this.to   = new Vector3i(to);
         }
 
-        Edge update(float dt) {
+        Edge update() {
             Node fromNode = nodeMap.get(from);
             Node toNode   = nodeMap.get(to);
             if (fromNode != null && toNode != null)
-                flux = flux.calculateFlux(dt, fromNode.storage, toNode.storage);
+                flux = flux.calculateFlux(fromNode.storage, toNode.storage);
             return this;
         }
 

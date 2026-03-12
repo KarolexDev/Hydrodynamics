@@ -76,7 +76,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     }
 
     @Override
-    public GasNetworkComponent calculateFlux(float dt, GasNetworkComponent from, GasNetworkComponent to) {
+    public GasNetworkComponent calculateFlux(GasNetworkComponent from, GasNetworkComponent to) {    // TODO: OVERHAUL
         GasNetworkComponent flux = zero();
 
         if (from.volume <= 0 || to.volume <= 0) return flux;
@@ -103,7 +103,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         if (deficit * pDiff < 0) return flux;
 
         double conductance = 5e3d;
-        double alpha = 1.0 - Math.exp(-conductance * Math.abs(pDiff) / pMax * dt);
+        double alpha = 1.0 - Math.exp(-conductance * Math.abs(pDiff) / pMax);
         alpha = Math.clamp(alpha, 0.0, 0.5); // MAX 0.5 verhindert Overshoot
 
         flux.amount = deficit * alpha;
