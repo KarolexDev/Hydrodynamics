@@ -43,14 +43,15 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 .getStore()
                 .getResource(TimeResource.getResourceType()).getNow();
         Set<Node> newVisitedNodes = new HashSet<>();
+        Set<Node> nextWave = new HashSet<>();
+        Set<Edge> updatedEdges = new HashSet<>();
 
         while (!schedule.isEmpty() && !schedule.peekEarliestTimestamp().isAfter(now)) {
             Node node = schedule.pollEarliest();
             newVisitedNodes.add(node);
 
-            // Edges zuerst updaten, dann Node
             for (Edge edge : node.connectedEdges) {
-                if (!visitedNodes.contains(edge.other(node))) edge.update();
+                if (updatedEdges.add(edge)) edge.update(); // ← nur einmal pro Tick
             }
 
             Duration delay = node.update(now, world);
@@ -60,9 +61,12 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 Node otherNode = edge.other(node);
                 if (otherNode == null) continue;
                 if (visitedNodes.contains(otherNode)) continue;
-                schedule.insert(otherNode, Instant.EPOCH);
+                nextWave.add(otherNode);
             }
         }
+
+        // Nachbarn für nächsten Tick einplanen
+        for (Node node : nextWave) schedule.insert(node, Instant.EPOCH);
 
         visitedNodes.clear();
         visitedNodes.addAll(newVisitedNodes);
@@ -98,6 +102,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 } else {
                     storage.add(edge.flux);
                 }
+                edge.flux = edge.flux.zero();
             }
 
             // Do whatever it gotta do...
