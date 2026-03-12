@@ -9,12 +9,15 @@ import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.event.events.ecs.BreakBlockEvent;
 import com.hypixel.hytale.server.core.event.events.ecs.PlaceBlockEvent;
+import com.hypixel.hytale.server.core.modules.time.TimeResource;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+
+import java.sql.Time;
 
 public class GasNetworkSystem {
     public GasNetworkSystem() { /* Utility Class */ }
@@ -24,8 +27,9 @@ public class GasNetworkSystem {
         @Override
         public void tick(float dt, int index, @NonNull Store<EntityStore> store) {
             GasNetworkResource network = store.getResource(GasNetworkResource.getResourceType());
+            TimeResource time = store.getResource(TimeResource.getResourceType());
             World world = Universe.get().getDefaultWorld();
-            network.tick(dt, world);
+            network.tick(dt, world, time);
         }
     }
 

@@ -13,6 +13,8 @@ import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
+
 public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComponent>, Component<ChunkStore> {
 
     public static final double R = 8.314; // J/(mol·K)
@@ -241,4 +243,28 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
             case TANK, PIPE, NONE -> {}
         }
     }
+
+    @Override
+    public Duration computeDelay(float dt, GasNetworkComponent previous) {
+        if (dt <= 0) return Duration.ofMillis(50);
+
+        double p     = pressure();
+        double pPrev = previous.pressure();
+        double t     = temperature();
+        double tPrev = previous.temperature();
+
+        double pRate = Math.abs(p - pPrev) / dt;
+        double tRate = Math.abs(t - tPrev) / dt;
+
+        Duration pDelay = pRate > 0 ? Duration.ofMillis(Math.clamp((long)(p * 0.001 / pRate * 1000), 50L, 5000L)) : null;
+        Duration tDelay = tRate > 0 ? Duration.ofMillis(Math.clamp((long)(t * 0.001 / tRate * 1000), 50L, 5000L)) : null;
+
+        if (pDelay == null && tDelay == null) return null;
+        if (pDelay == null) return tDelay;
+        if (tDelay == null) return pDelay;
+        return pDelay.compareTo(tDelay) <= 0 ? pDelay : tDelay;
+    }
+
+    @Override
+    public boolean isActive() { return type == GasNetworkType.SINK || type == GasNetworkType.SOURCE; }
 }

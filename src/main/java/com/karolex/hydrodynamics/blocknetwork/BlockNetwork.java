@@ -1,5 +1,6 @@
 package com.karolex.hydrodynamics.blocknetwork;
 
+import com.hypixel.hytale.server.core.modules.time.TimeResource;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.karolex.hydrodynamics.util.BlockUtil;
 import com.karolex.hydrodynamics.blocknetwork.BlockNetworkSerialization.*;
@@ -9,7 +10,10 @@ import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
+import com.karolex.hydrodynamics.util.UniqueSchedule;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -20,9 +24,6 @@ import java.util.function.Supplier;
  */
 public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
-    private static final float MIN_UPDATE_INTERVAL = 0.05f;  // max. 20 Updates/s at high activity
-    private static final float MAX_UPDATE_INTERVAL = 5.0f;   // min. 1 Update every 5s at rest
-
     private final Map<Vector3i, Node> nodeMap = new HashMap<>();
     private final Set<Node> nodes = new HashSet<>();
     private final Supplier<BlockNetwork<C>> factory;
@@ -31,37 +32,47 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         this.factory = factory;
     }
 
-    private final Set<Node> visitedNodes = new HashSet<>();
-    private final Set<Node> nodesToUpdate = new HashSet<>();
+    private final UniqueSchedule<Node> schedule = new UniqueSchedule<>();
+    private final HashSet<Node> visitedNodes = new HashSet<>();
 
-    void tick(float dt, World world) {
-        // TODO: Implement wave triggering.
-        // TODO: Perhaps implement propagation delay (ver cumbersome and likely unnecessary...)
+    void tick(float dt, World world, TimeResource time) {
+        Instant now = time.getNow();
 
-        Set<Node> newNodesToUpdate = new HashSet<>();
         Set<Edge> edgesToUpdate = new HashSet<>();
+        Set<Node> newVisitedNodes = new HashSet<>();
 
-        for (Node node : nodesToUpdate) {
-            node.update(dt, world);
+        while (!schedule.isEmpty() && !schedule.peekEarliestTimestamp().isAfter(now)) {
+            Node node = schedule.pollEarliest();
+            newVisitedNodes.add(node);
+
+            C previous = node.update(now, dt, world);
+
             for (Edge edge : node.connectedEdges) {
                 Node otherNode = edge.other(node);
+                if (otherNode == null) continue;
                 if (visitedNodes.contains(otherNode)) continue;
+
                 edgesToUpdate.add(edge);
-                newNodesToUpdate.add(otherNode);
+
+                Duration delay = node.storage.computeDelay(dt, previous);
+                if (delay != null) schedule.insert(otherNode, now.plus(delay));
             }
         }
 
         for (Edge edge : edgesToUpdate) edge.update(dt);
 
         visitedNodes.clear();
-        visitedNodes.addAll(nodesToUpdate);
+        visitedNodes.addAll(newVisitedNodes);
+    }
 
-        nodesToUpdate.clear();
-        nodesToUpdate.addAll(newNodesToUpdate);
+    void triggerUpdateWave(Node node) {
+        if (node == null) return;
+        visitedNodes.remove(node);
+        schedule.insert(node, Instant.EPOCH); // sofort, also immer vor now
     }
 
     public void triggerUpdateWave(Vector3i pos) {
-        nodesToUpdate.add(nodeMap.get(pos));
+        triggerUpdateWave(nodeMap.get(pos));
     }
 
     final class Node {
@@ -69,7 +80,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         final Set<Vector3i> blocks = new LinkedHashSet<>();
         final Set<Edge> connectedEdges = new HashSet<>();
 
-        Node update(float dt, World world) {
+        C update(Instant now, float dt, World world) {
+            C previous = storage.copy(); // Snapshot vorher
+
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
                     storage.del(edge.flux);
@@ -81,6 +94,11 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             // Do whatever it gotta do...
             storage.tick(dt);
 
+            if (storage.isActive()) {
+                Duration delay = storage.computeDelay(dt, previous);
+                if (delay != null) schedule.insert(this, now.plus(delay));
+            }
+
             // World update hook
             if (storage.requiresWorldUpdate()) {
                 for (Vector3i pos : blocks) {
@@ -90,7 +108,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 }
             }
 
-            return this;
+            return previous;
         }
     }
 
@@ -190,7 +208,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                         addEdge(ourPos, theirPos, currentNew.storage);
                         Node refreshedNeighbour = nodeMap.get(theirPos);
                         if (refreshedNeighbour != null)
-                            nodesToUpdate.add(refreshedNeighbour);
+                            triggerUpdateWave(refreshedNeighbour);
                     }
                 } else {
                     // Tanks, for example.
@@ -199,13 +217,13 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             } else {
                 // Different network component types.
                 addEdge(ourPos, theirPos, currentNew.storage);
-                nodesToUpdate.add(neighbour);
+                triggerUpdateWave(neighbour);
             }
         }
 
         // 6.   Trigger update wave.
         Node finalNew = nodeMap.get(origin);
-        if (finalNew != null) nodesToUpdate.add(finalNew);
+        if (finalNew != null) triggerUpdateWave(finalNew);
 
         runOnBlockAdded();
     }
@@ -270,7 +288,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         // 6.   Trigger update waves at affected neighbours.
         for (Node nb : affectedNeighbours) {
             if (nodes.contains(nb) && nb.storage != null)
-                nodesToUpdate.add(nb);
+                triggerUpdateWave(nb);
         }
 
         // 7.   Test for coherency of the network.
@@ -599,7 +617,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         nodeMap.clear();
         nodes.forEach(node -> node.connectedEdges.clear());
         nodes.clear();
-        nodesToUpdate.clear();
+        schedule.clear();
+        visitedNodes.clear();
     }
 
     public abstract void runOnBlockAdded();

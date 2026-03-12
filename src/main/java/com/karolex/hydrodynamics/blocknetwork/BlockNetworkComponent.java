@@ -3,6 +3,9 @@ package com.karolex.hydrodynamics.blocknetwork;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.world.World;
 
+import javax.annotation.Nullable;
+import java.time.Duration;
+
 public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
 
     // Arithmetic Methods
@@ -23,4 +26,8 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     default boolean isPipe() { return false; };
 
     void tick(float dt);
+
+    @Nullable
+    Duration computeDelay(float dt, C previous);
+    boolean isActive();
 }
