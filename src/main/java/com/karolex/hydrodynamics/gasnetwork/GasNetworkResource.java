@@ -1,5 +1,6 @@
 package com.karolex.hydrodynamics.gasnetwork;
 
+import com.hypixel.hytale.server.core.universe.Universe;
 import com.karolex.hydrodynamics.HydrodynamicsPlugin;
 import com.karolex.hydrodynamics.blocknetwork.BlockNetwork;
 import com.karolex.hydrodynamics.blocknetwork.BlockNetworkManager;
@@ -13,7 +14,7 @@ public class GasNetworkResource extends BlockNetworkManager<GasNetworkComponent,
 
     public static class GasNetwork extends BlockNetwork<GasNetworkComponent> {
         public GasNetwork() {
-            super(GasNetwork::new);
+            super(Universe.get().getDefaultWorld(), GasNetwork::new);
         }
 
         @Override

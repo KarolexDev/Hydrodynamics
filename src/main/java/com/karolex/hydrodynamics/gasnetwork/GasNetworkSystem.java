@@ -27,9 +27,7 @@ public class GasNetworkSystem {
         @Override
         public void tick(float dt, int index, @NonNull Store<EntityStore> store) {
             GasNetworkResource network = store.getResource(GasNetworkResource.getResourceType());
-            TimeResource time = store.getResource(TimeResource.getResourceType());
-            World world = Universe.get().getDefaultWorld();
-            network.tick(world, time);
+            network.tick();
         }
     }
 

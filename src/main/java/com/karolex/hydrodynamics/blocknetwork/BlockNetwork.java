@@ -28,15 +28,20 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     private final Set<Node> nodes = new HashSet<>();
     private final Supplier<BlockNetwork<C>> factory;
 
-    protected BlockNetwork(Supplier<BlockNetwork<C>> factory) {
+    protected BlockNetwork(World world, Supplier<BlockNetwork<C>> factory) {
+        this.world = world;
         this.factory = factory;
     }
 
     private final UniqueSchedule<Node> schedule = new UniqueSchedule<>();
     private final HashSet<Node> visitedNodes = new HashSet<>();
 
-    void tick(World world, TimeResource time) {
-        Instant now = time.getNow();
+    private final World world;
+
+    void tick() {
+        Instant now = world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow();
         Set<Node> newVisitedNodes = new HashSet<>();
 
         while (!schedule.isEmpty() && !schedule.peekEarliestTimestamp().isAfter(now)) {
@@ -78,7 +83,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         C storage;
         final Set<Vector3i> blocks = new LinkedHashSet<>();
         final Set<Edge> connectedEdges = new HashSet<>();
-        Instant lastUpdated = Instant.EPOCH;
+        Instant lastUpdated;
+
+        Node(Instant timeOfCreation) { lastUpdated = timeOfCreation; }
 
         Duration update(Instant now, World world) {
             float dt = Duration.between(lastUpdated, now).toNanos() * 1e-9f;
@@ -87,9 +94,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
-                    storage.del(dt, edge.flux);
+                    storage.del(edge.flux);
                 } else {
-                    storage.add(dt, edge.flux);
+                    storage.add(edge.flux);
                 }
             }
 
@@ -157,7 +164,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         }
 
         // 3.   Register new Node
-        Node newNode = new Node();
+        Node newNode = new Node(world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow());
         newNode.storage = storage;
         for (Vector3i p : occupiedSet) {
             newNode.blocks.add(new Vector3i(p));
@@ -442,7 +451,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         nodes.remove(oldNode);
 
-        Node junctionNode = new Node();
+        Node junctionNode = new Node(world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow());
         junctionNode.blocks.add(new Vector3i(junctionPos));
         junctionNode.storage = oldNode.storage.partition(1, oldNode.blocks.size() - 1)[0];
         nodeMap.put(new Vector3i(junctionPos), junctionNode);
@@ -463,7 +474,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             Vector3i seed = unvisited.iterator().next();
             unvisited.remove(seed);
 
-            Node seg = new Node();
+            Node seg = new Node(world.getEntityStore()
+                    .getStore()
+                    .getResource(TimeResource.getResourceType()).getNow());
             seg.blocks.add(new Vector3i(seed));
             nodeMap.put(new Vector3i(seed), seg);
 
@@ -520,7 +533,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         Vector3i seed = unvisited.iterator().next();
         unvisited.remove(seed);
 
-        Node seg = new Node();
+        Node seg = new Node(world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow());
         seg.blocks.add(new Vector3i(seed));
         nodeMap.put(new Vector3i(seed), seg);
 
@@ -657,7 +672,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     public void deserializeNodes(NodeDTO<C>[] nodeDTOs) {
         clear();
         for (NodeDTO<C> dto : nodeDTOs) {
-            Node node = new Node();
+            Node node = new Node(world.getEntityStore()
+                    .getStore()
+                    .getResource(TimeResource.getResourceType()).getNow());
             node.storage = dto.storage;
             for (Vector3i p : dto.blocks) {
                 node.blocks.add(p);

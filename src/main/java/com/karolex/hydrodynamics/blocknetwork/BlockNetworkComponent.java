@@ -9,8 +9,8 @@ import java.time.Duration;
 public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
 
     // Arithmetic Methods
-    C add(float dt, C flux);
-    C del(float dt, C flux);
+    C add(C flux);
+    C del(C flux);
     C mergeComponents(C flux);
     C calculateFlux(C from, C to);
     C[] partition(int left_size, int right_size);
