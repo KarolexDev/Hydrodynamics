@@ -9,8 +9,8 @@ import java.time.Duration;
 public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
 
     // Arithmetic Methods
-    C add(C flux);
-    C del(C flux);
+    C add(float dt, C flux);
+    C del(float dt, C flux);
     C mergeComponents(C flux);
     C calculateFlux(float dt, C from, C to);
     C[] partition(int left_size, int right_size);
@@ -28,6 +28,6 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     void tick(float dt);
 
     @Nullable
-    Duration computeDelay(float dt, C previous);
+    Duration computeDelay(float dt, C previous, boolean isCapped);
     boolean isActive();
 }

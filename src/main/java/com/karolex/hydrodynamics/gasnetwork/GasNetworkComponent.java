@@ -128,14 +128,14 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     }
 
     @Override
-    public GasNetworkComponent add(GasNetworkComponent flux) {
+    public GasNetworkComponent add(float dt, GasNetworkComponent flux) {
         amount = Math.max(MIN_AMOUNT, amount + flux.amount);
         energy = Math.max(MIN_ENERGY, energy + flux.energy);
         return this;
     }
 
     @Override
-    public GasNetworkComponent del(GasNetworkComponent flux) {
+    public GasNetworkComponent del(float dt, GasNetworkComponent flux) {
         amount = Math.max(MIN_AMOUNT, amount - flux.amount);
         energy = Math.max(MIN_ENERGY, energy - flux.energy);
         return this;
@@ -245,7 +245,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     }
 
     @Override
-    public Duration computeDelay(float dt, GasNetworkComponent previous) {
+    public Duration computeDelay(float dt, GasNetworkComponent previous, boolean isCapped) {
         if (dt <= 0) return Duration.ofMillis(50);
 
         double p     = pressure();
@@ -253,13 +253,22 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         double t     = temperature();
         double tPrev = previous.temperature();
 
-        double pRate = Math.abs(p - pPrev) / dt;
-        double tRate = Math.abs(t - tPrev) / dt;
+        double pRate = Math.abs(p - pPrev) / dt * 1e3;
+        double tRate = Math.abs(t - tPrev) / dt * 1e3;
 
-        Duration pDelay = pRate > 0 ? Duration.ofMillis(Math.clamp((long)(p * 0.001 / pRate * 1000), 50L, 5000L)) : null;
-        Duration tDelay = tRate > 0 ? Duration.ofMillis(Math.clamp((long)(t * 0.001 / tRate * 1000), 50L, 5000L)) : null;
+        Duration pDelay = pRate > 0
+                ? Duration.ofMillis(Math.clamp((long)(p * 0.001 / pRate * 1000), 50L,
+                isCapped ? 5000L : Long.MAX_VALUE))
+                : null;
+        Duration tDelay = tRate > 0
+                ? Duration.ofMillis(Math.clamp((long)(t * 0.001 / tRate * 1000), 50L,
+                isCapped ? 5000L : Long.MAX_VALUE))
+                : null;
 
-        if (pDelay == null && tDelay == null) return null;
+        if (pDelay == null && tDelay == null)
+            // Nur Fallback wenn isCapped UND aktiv – sonst null
+            return isCapped ? Duration.ofMillis(5000L) : null;
+
         if (pDelay == null) return tDelay;
         if (tDelay == null) return pDelay;
         return pDelay.compareTo(tDelay) <= 0 ? pDelay : tDelay;

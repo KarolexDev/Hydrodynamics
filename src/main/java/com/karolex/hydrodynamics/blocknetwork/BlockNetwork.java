@@ -35,31 +35,48 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     private final UniqueSchedule<Node> schedule = new UniqueSchedule<>();
     private final HashSet<Node> visitedNodes = new HashSet<>();
 
-    void tick(float dt, World world, TimeResource time) {
+    void tick(World world, TimeResource time) {
         Instant now = time.getNow();
-
-        Set<Edge> edgesToUpdate = new HashSet<>();
         Set<Node> newVisitedNodes = new HashSet<>();
+        Set<Node> nodesToProcess = new HashSet<>();
 
+        // Sammle alle fälligen Nodes
         while (!schedule.isEmpty() && !schedule.peekEarliestTimestamp().isAfter(now)) {
             Node node = schedule.pollEarliest();
             newVisitedNodes.add(node);
+            nodesToProcess.add(node);
+        }
 
-            C previous = node.update(now, dt, world);
+        // Phase 1: Edges updaten (Flux berechnen)
+        //          Nur Edges deren mindestens ein Node in diesem Tick dran ist
+        Set<Edge> edgesToUpdate = new HashSet<>();
+        for (Node node : nodesToProcess) {
+            for (Edge edge : node.connectedEdges) {
+                if (visitedNodes.contains(edge.other(node))) continue;
+                edgesToUpdate.add(edge);
+            }
+        }
+        for (Edge edge : edgesToUpdate) {
+            // dt vom from-Node bestimmen
+            Node fromNode = nodeMap.get(edge.from);
+            if (fromNode == null) continue;
+            float dt = (float) Duration.between(fromNode.lastUpdated, now).toNanos() * 1e-9f;
+            edge.update(dt);
+        }
+
+        // Phase 2: Nodes updaten + Nachbarn einplanen
+        for (Node node : nodesToProcess) {
+            Duration delay = node.update(now, world);
+
+            if (delay != null) schedule.insert(node, now.plus(delay));
 
             for (Edge edge : node.connectedEdges) {
                 Node otherNode = edge.other(node);
                 if (otherNode == null) continue;
                 if (visitedNodes.contains(otherNode)) continue;
-
-                edgesToUpdate.add(edge);
-
-                Duration delay = node.storage.computeDelay(dt, previous);
-                if (delay != null) schedule.insert(otherNode, now.plus(delay));
+                schedule.insert(otherNode, Instant.EPOCH);
             }
         }
-
-        for (Edge edge : edgesToUpdate) edge.update(dt);
 
         visitedNodes.clear();
         visitedNodes.addAll(newVisitedNodes);
@@ -67,6 +84,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     void triggerUpdateWave(Node node) {
         if (node == null) return;
+
         visitedNodes.remove(node);
         schedule.insert(node, Instant.EPOCH); // sofort, also immer vor now
     }
@@ -79,25 +97,23 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         C storage;
         final Set<Vector3i> blocks = new LinkedHashSet<>();
         final Set<Edge> connectedEdges = new HashSet<>();
+        Instant lastUpdated = Instant.EPOCH;
 
-        C update(Instant now, float dt, World world) {
+        Duration update(Instant now, World world) {
+            float dt = Duration.between(lastUpdated, now).toNanos() * 1e-9f;
+            lastUpdated = now;
             C previous = storage.copy(); // Snapshot vorher
 
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
-                    storage.del(edge.flux);
+                    storage.del(dt, edge.flux);
                 } else {
-                    storage.add(edge.flux);
+                    storage.add(dt, edge.flux);
                 }
             }
 
             // Do whatever it gotta do...
             storage.tick(dt);
-
-            if (storage.isActive()) {
-                Duration delay = storage.computeDelay(dt, previous);
-                if (delay != null) schedule.insert(this, now.plus(delay));
-            }
 
             // World update hook
             if (storage.requiresWorldUpdate()) {
@@ -108,7 +124,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 }
             }
 
-            return previous;
+            return storage.computeDelay(dt, previous, storage.isActive());
         }
     }
 

@@ -29,7 +29,7 @@ public class GasNetworkSystem {
             GasNetworkResource network = store.getResource(GasNetworkResource.getResourceType());
             TimeResource time = store.getResource(TimeResource.getResourceType());
             World world = Universe.get().getDefaultWorld();
-            network.tick(dt, world, time);
+            network.tick(world, time);
         }
     }
 
