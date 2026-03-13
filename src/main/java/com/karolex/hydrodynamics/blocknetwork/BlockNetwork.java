@@ -50,22 +50,21 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             Node node = schedule.pollEarliest();
             newVisitedNodes.add(node);
 
+            // Update Edges first!
             for (Edge edge : node.connectedEdges) {
-                if (updatedEdges.add(edge)) edge.update(); // ← nur einmal pro Tick
-            }
+                if (updatedEdges.add(edge)) edge.update();
 
-            Duration delay = node.update(now, world);
-            if (delay != null) schedule.insert(node, now.plus(delay));
-
-            for (Edge edge : node.connectedEdges) {
+                // If that causes bugs, move this section into a separate for-loop
                 Node otherNode = edge.other(node);
                 if (otherNode == null) continue;
                 if (visitedNodes.contains(otherNode)) continue;
                 nextWave.add(otherNode);
             }
+
+            Duration delay = node.update(now, world);
+            if (delay != null) schedule.insert(node, now.plus(delay));
         }
 
-        // Nachbarn für nächsten Tick einplanen
         for (Node node : nextWave) schedule.insert(node, Instant.EPOCH);
 
         visitedNodes.clear();
@@ -74,13 +73,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     void triggerUpdateWave(Node node) {
         if (node == null) return;
-
         visitedNodes.remove(node);
-        schedule.insert(node, Instant.EPOCH); // sofort, also immer vor now
-    }
-
-    public void triggerUpdateWave(Vector3i pos) {
-        triggerUpdateWave(nodeMap.get(pos));
+        schedule.insert(node, Instant.EPOCH);
     }
 
     final class Node {
