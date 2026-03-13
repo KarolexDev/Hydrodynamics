@@ -54,6 +54,12 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             for (Edge edge : node.connectedEdges) {
                 if (updatedEdges.add(edge)) edge.update();
 
+                // Update Wave Reflection on dead ends
+                if (node.connectedEdges.size() == 1) {
+                    if (visitedNodes.contains(node)) continue;
+                    nextWave.add(node);
+                }
+
                 // If that causes bugs, move this section into a separate for-loop
                 Node otherNode = edge.other(node);
                 if (otherNode == null) continue;
