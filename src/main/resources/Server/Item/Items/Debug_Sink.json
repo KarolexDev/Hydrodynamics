@@ -39,10 +39,10 @@
         "GasNetworkComponent": {
           "Amount": 50,
           "Energy": 152000,
-          "Type": "Source",
+          "Type": "Sink",
           "Volume": 1,
-          "TargetPressure": 100000,
-          "MaxRate": 10000
+          "TargetPressure": 80000,
+          "MaxRate": 100
         }
       }
     },

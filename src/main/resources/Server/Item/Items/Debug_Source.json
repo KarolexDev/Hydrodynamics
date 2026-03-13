@@ -42,7 +42,7 @@
           "Type": "Source",
           "Volume": 1,
           "TargetPressure": 100000,
-          "MaxRate": 1
+          "MaxRate": 100
         }
       }
     },
