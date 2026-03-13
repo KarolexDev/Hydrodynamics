@@ -1,5 +1,7 @@
 package com.karolex.hydrodynamics.blocknetwork;
 
+import com.hypixel.hytale.server.core.modules.time.TimeResource;
+import com.hypixel.hytale.server.core.universe.world.World;
 import com.karolex.hydrodynamics.util.BlockUtil;
 import com.karolex.hydrodynamics.blocknetwork.BlockNetworkSerialization.*;
 import com.hypixel.hytale.codec.KeyedCodec;
@@ -7,11 +9,12 @@ import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
-import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
+import com.karolex.hydrodynamics.util.UniqueSchedule;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 
 /**
@@ -21,115 +24,71 @@ import java.util.function.Supplier;
  */
 public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
-    private static final float MIN_UPDATE_INTERVAL = 0.05f;  // max. 20 Updates/s at high activity
-    private static final float MAX_UPDATE_INTERVAL = 5.0f;   // min. 1 Update every 5s at rest
-
     private final Map<Vector3i, Node> nodeMap = new HashMap<>();
     private final Set<Node> nodes = new HashSet<>();
     private final Supplier<BlockNetwork<C>> factory;
 
-    protected BlockNetwork(Supplier<BlockNetwork<C>> factory) {
+    protected BlockNetwork(World world, Supplier<BlockNetwork<C>> factory) {
+        this.world = world;
         this.factory = factory;
     }
 
-    public class UpdateWave {
+    private final UniqueSchedule<Node> schedule = new UniqueSchedule<>();
+    private final HashSet<Node> visitedNodes = new HashSet<>();
 
-        private class Wavefront {
-            private final Node current;
-            private final Node cameFrom;
-            float remainingTime;
+    private final World world;
 
-            private Wavefront(Node current, Node cameFrom, float remainingTime) {
-                this.current = current;
-                this.cameFrom = cameFrom;
-                this.remainingTime = remainingTime;
-            }
-        }
+    void tick() {
+        Instant now = world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow();
+        Set<Node> newVisitedNodes = new HashSet<>();
+        Set<Node> nextWave = new HashSet<>();
+        Set<Edge> updatedEdges = new HashSet<>();
 
-        private final List<Wavefront> wavefronts = new CopyOnWriteArrayList<>();
-        private static int globalWaveTick = 0;
+        while (!schedule.isEmpty() && !schedule.peekEarliestTimestamp().isAfter(now)) {
+            Node node = schedule.pollEarliest();
+            newVisitedNodes.add(node);
 
-        public UpdateWave(Node startNode) {
-            wavefronts.add(new Wavefront(startNode, null, 0));
-        }
+            // Update Edges first!
+            for (Edge edge : node.connectedEdges) {
+                if (updatedEdges.add(edge)) edge.update();
 
-        public void tick(float dt) {
-            int currentWaveTick = globalWaveTick++;
-            List<Wavefront> next = new ArrayList<>();
-
-            for (Wavefront wf : wavefronts) {
-                wf.remainingTime -= dt;
-                if (wf.remainingTime > 0) {
-                    next.add(wf);
-                    continue;
-                }
-
-                float changeRate = 0f;
-                if (wf.current.storage != null) {
-                    C storageBefore = wf.current.storage.copy();
-                    wf.current.update(dt, currentWaveTick);
-                    changeRate = storageBefore.changeRate(wf.current.storage);
-                    wf.current.recordChangeRate(changeRate);
-                }
-
-                for (Edge edge : wf.current.connectedEdges) {
-                    Node neighbor = edge.other(wf.current);
-                    if (neighbor == null || neighbor.equals(wf.cameFrom)) continue;
-
-                    edge.update(dt);
-                    next.add(new Wavefront(neighbor, wf.current, neighbor.computeDelay(changeRate)));
-                }
+                // If that causes bugs, move this section into a separate for-loop
+                Node otherNode = edge.other(node);
+                if (otherNode == null) continue;
+                if (visitedNodes.contains(otherNode)) continue;
+                nextWave.add(otherNode);
             }
 
-            wavefronts.clear();
-            wavefronts.addAll(next);
+            Duration delay = node.update(now, world);
+            if (delay != null) schedule.insert(node, now.plus(delay));
         }
 
-        public boolean isFinished() {
-            return wavefronts.isEmpty();
-        }
+        for (Node node : nextWave) schedule.insert(node, Instant.EPOCH);
+
+        visitedNodes.clear();
+        visitedNodes.addAll(newVisitedNodes);
     }
 
-    private final List<UpdateWave> activeWaves = new ArrayList<>();
-
-    public void tick(float dt, World world) {
-        if (world == null) return;
-
-        for (UpdateWave wave : activeWaves) {
-            wave.tick(dt);
-        }
-        activeWaves.removeIf(UpdateWave::isFinished);
-
-        for (Node node : nodes) {   // TODO: ITERATES THROUGH ALL NODES??? THAT IS STUPID
-            node.timeSinceLastUpdate += dt;
-
-            if (node.triggersUpdates()) {
-                node.timeSinceLastUpdate = 0f;
-                activeWaves.add(new UpdateWave(node));
-            }
-
-            if (node.storage.requiresWorldUpdate()) {
-                for (Vector3i pos : node.blocks) {
-                    final Vector3i capturedPos = new Vector3i(pos);
-                    final C capturedStorage = node.storage;
-                    world.execute(() -> capturedStorage.onWorldUpdate(capturedPos, world));
-                }
-            }
-        }
+    void triggerUpdateWave(Node node) {
+        if (node == null) return;
+        visitedNodes.remove(node);
+        schedule.insert(node, Instant.EPOCH);
     }
 
     final class Node {
         C storage;
         final Set<Vector3i> blocks = new LinkedHashSet<>();
         final Set<Edge> connectedEdges = new HashSet<>();
+        Instant lastUpdated;
 
-        private float timeSinceLastUpdate = 0f;
-        private float lastChangeRate = 0f;
-        private int lastAppliedWaveTick = -1;
+        Node(Instant timeOfCreation) { lastUpdated = timeOfCreation; }
 
-        Node update(float dt, int waveTick) {
-            if (lastAppliedWaveTick == waveTick) return this;
-            lastAppliedWaveTick = waveTick;
+        Duration update(Instant now, World world) {
+            float dt = Duration.between(lastUpdated, now).toNanos() * 1e-9f;
+            lastUpdated = now;
+            C previous = storage.copy(); // Snapshot vorher
 
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
@@ -137,27 +96,22 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 } else {
                     storage.add(edge.flux);
                 }
+                edge.flux = edge.flux.zero();
             }
-            return this;
-        }
 
-        void recordChangeRate(float changeRate) {
-            this.lastChangeRate = changeRate;
-        }
+            // Do whatever it gotta do...
+            storage.tick(dt);
 
-        float computeUpdateInterval() {
-            if (lastChangeRate <= 0f) return MAX_UPDATE_INTERVAL;
-            return Math.clamp(MIN_UPDATE_INTERVAL / lastChangeRate, MIN_UPDATE_INTERVAL, MAX_UPDATE_INTERVAL);
-        }
+            // World update hook
+            if (storage.requiresWorldUpdate()) {
+                for (Vector3i pos : blocks) {
+                    final Vector3i capturedPos = new Vector3i(pos);
+                    final C capturedStorage = storage;
+                    capturedStorage.onWorldUpdate(capturedPos, world);
+                }
+            }
 
-        public boolean triggersUpdates() {
-            return timeSinceLastUpdate >= computeUpdateInterval();
-        }
-
-        public int getUpdateTickRate() { return 1; }
-
-        public float computeDelay(float changeRate) {
-            return storage.computeDelay(changeRate);
+            return storage.computeDelay(dt, previous, storage.isActive());
         }
     }
 
@@ -171,11 +125,11 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             this.to   = new Vector3i(to);
         }
 
-        Edge update(float dt) {
+        Edge update() {
             Node fromNode = nodeMap.get(from);
             Node toNode   = nodeMap.get(to);
             if (fromNode != null && toNode != null)
-                flux = flux.calculateFlux(dt, fromNode.storage, toNode.storage);
+                flux = flux.calculateFlux(fromNode.storage, toNode.storage);
             return this;
         }
 
@@ -192,6 +146,10 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             if (node == to)   return from;
             return null;
         }
+
+        public boolean connectedTo(Node node) {
+            return (nodeMap.get(this.to) == node) || (nodeMap.get(this.from) == node);
+        }
     }
 
     public void onBlockPlaced(Vector3i origin, BlockType blockType, WorldChunk chunk, C storage) {
@@ -205,7 +163,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         }
 
         // 3.   Register new Node
-        Node newNode = new Node();
+        Node newNode = new Node(world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow());
         newNode.storage = storage;
         for (Vector3i p : occupiedSet) {
             newNode.blocks.add(new Vector3i(p));
@@ -253,7 +213,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                         addEdge(ourPos, theirPos, currentNew.storage);
                         Node refreshedNeighbour = nodeMap.get(theirPos);
                         if (refreshedNeighbour != null)
-                            activeWaves.add(new UpdateWave(refreshedNeighbour));
+                            triggerUpdateWave(refreshedNeighbour);
                     }
                 } else {
                     // Tanks, for example.
@@ -262,13 +222,13 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             } else {
                 // Different network component types.
                 addEdge(ourPos, theirPos, currentNew.storage);
-                activeWaves.add(new UpdateWave(neighbour));
+                triggerUpdateWave(neighbour);
             }
         }
 
         // 6.   Trigger update wave.
         Node finalNew = nodeMap.get(origin);
-        if (finalNew != null) activeWaves.add(new UpdateWave(finalNew));
+        if (finalNew != null) triggerUpdateWave(finalNew);
 
         runOnBlockAdded();
     }
@@ -333,7 +293,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         // 6.   Trigger update waves at affected neighbours.
         for (Node nb : affectedNeighbours) {
             if (nodes.contains(nb) && nb.storage != null)
-                activeWaves.add(new UpdateWave(nb));
+                triggerUpdateWave(nb);
         }
 
         // 7.   Test for coherency of the network.
@@ -490,7 +450,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         nodes.remove(oldNode);
 
-        Node junctionNode = new Node();
+        Node junctionNode = new Node(world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow());
         junctionNode.blocks.add(new Vector3i(junctionPos));
         junctionNode.storage = oldNode.storage.partition(1, oldNode.blocks.size() - 1)[0];
         nodeMap.put(new Vector3i(junctionPos), junctionNode);
@@ -511,7 +473,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             Vector3i seed = unvisited.iterator().next();
             unvisited.remove(seed);
 
-            Node seg = new Node();
+            Node seg = new Node(world.getEntityStore()
+                    .getStore()
+                    .getResource(TimeResource.getResourceType()).getNow());
             seg.blocks.add(new Vector3i(seed));
             nodeMap.put(new Vector3i(seed), seg);
 
@@ -568,7 +532,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         Vector3i seed = unvisited.iterator().next();
         unvisited.remove(seed);
 
-        Node seg = new Node();
+        Node seg = new Node(world.getEntityStore()
+                .getStore()
+                .getResource(TimeResource.getResourceType()).getNow());
         seg.blocks.add(new Vector3i(seed));
         nodeMap.put(new Vector3i(seed), seg);
 
@@ -662,7 +628,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         nodeMap.clear();
         nodes.forEach(node -> node.connectedEdges.clear());
         nodes.clear();
-        activeWaves.clear();
+        schedule.clear();
+        visitedNodes.clear();
     }
 
     public abstract void runOnBlockAdded();
@@ -704,7 +671,9 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
     public void deserializeNodes(NodeDTO<C>[] nodeDTOs) {
         clear();
         for (NodeDTO<C> dto : nodeDTOs) {
-            Node node = new Node();
+            Node node = new Node(world.getEntityStore()
+                    .getStore()
+                    .getResource(TimeResource.getResourceType()).getNow());
             node.storage = dto.storage;
             for (Vector3i p : dto.blocks) {
                 node.blocks.add(p);
