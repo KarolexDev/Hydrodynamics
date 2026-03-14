@@ -97,10 +97,19 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         double totalVolume = from.volume + to.volume;
         double eqAmountFrom = totalAmount * (from.volume / totalVolume);
 
-        double transfer_ratio = 0.6; // Unstable at higher values!
+        double transfer_ratio = 0.6;
 
         double delta = (from.amount - eqAmountFrom) * transfer_ratio;
-        delta = Math.clamp(delta, -(to.amount - MIN_AMOUNT) * transfer_ratio, (from.amount - MIN_AMOUNT) * transfer_ratio);
+
+        double lowerBound = -(to.amount - MIN_AMOUNT) * transfer_ratio;
+        double upperBound = (from.amount - MIN_AMOUNT) * transfer_ratio;
+
+        if (upperBound < lowerBound) {
+            flux.amount = 0;
+            return flux;
+        }
+
+        delta = Math.clamp(delta, lowerBound, upperBound);
 
         flux.amount = delta;
         return flux;
