@@ -9,6 +9,8 @@ import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.event.events.ecs.BreakBlockEvent;
 import com.hypixel.hytale.server.core.event.events.ecs.PlaceBlockEvent;
+import com.hypixel.hytale.server.core.event.events.ecs.UseBlockEvent;
+import com.hypixel.hytale.server.core.modules.interaction.interaction.config.client.UseBlockInteraction;
 import com.hypixel.hytale.server.core.modules.time.TimeResource;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
@@ -28,6 +30,42 @@ public class GasNetworkSystem {
         public void tick(float dt, int index, @NonNull Store<EntityStore> store) {
             GasNetworkResource network = store.getResource(GasNetworkResource.getResourceType());
             network.tick();
+        }
+    }
+
+    public static class NetworkBlockUseEventSystem extends EntityEventSystem<EntityStore, UseBlockEvent.Post> {
+        public NetworkBlockUseEventSystem() { super(UseBlockEvent.Post.class); }
+
+        @Override
+        public void handle(int index, @NonNull ArchetypeChunk<EntityStore> archetypeChunk, @NonNull Store<EntityStore> entityStore, @NonNull CommandBuffer<EntityStore> commandBuffer, UseBlockEvent.Post event) {
+            try {
+                if (!event.getBlockType().getId().contains("Valve")) return;    // Can be done cleaner!
+
+                World world = Universe.get().getDefaultWorld();
+                if (world == null) return;
+
+                Vector3i targetPos = event.getTargetBlock();
+                int x = targetPos.getX();
+                int y = targetPos.getY();
+                int z = targetPos.getZ();
+
+                GasNetworkResource network = entityStore.getResource(GasNetworkResource.getResourceType());
+
+                world.execute(() -> {
+                    try {
+                        network.onValveToggled(new Vector3i(x, y, z));
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public @Nullable Query<EntityStore> getQuery() {
+            return Archetype.empty();
         }
     }
 

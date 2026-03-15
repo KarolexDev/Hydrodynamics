@@ -1,5 +1,6 @@
 package com.karolex.hydrodynamics.gasnetwork;
 
+import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.karolex.hydrodynamics.HydrodynamicsPlugin;
 import com.karolex.hydrodynamics.blocknetwork.BlockNetwork;
@@ -11,6 +12,12 @@ import org.jspecify.annotations.Nullable;
 
 public class GasNetworkResource extends BlockNetworkManager<GasNetworkComponent, GasNetworkResource.GasNetwork>
         implements Resource<EntityStore> {
+
+    public void onValveToggled(Vector3i pos) {
+        GasNetworkComponent comp = getComponent(pos);
+        if (comp == null) return;
+        comp.isClosed = !comp.isClosed;
+    }
 
     public static class GasNetwork extends BlockNetwork<GasNetworkComponent> {
         public GasNetwork() {

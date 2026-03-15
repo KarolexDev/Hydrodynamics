@@ -42,6 +42,7 @@ public class HydrodynamicsPlugin extends JavaPlugin {
         this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkTickingSystem());
         this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkBlockPlaceEventSystem());
         this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkBlockBreakEventSystem());
+        this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkBlockUseEventSystem());
 
         this.getCodecRegistry(Interaction.CODEC).register("ConfigurePipe", ConfigurePipeInteraction.class, ConfigurePipeInteraction.CODEC);
     }

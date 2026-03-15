@@ -34,7 +34,9 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
                 .append(new KeyedCodec<>("Volume",         Codec.DOUBLE),  (c, v) -> c.volume         = v, c -> c.volume).add()
                 .append(new KeyedCodec<>("TargetPressure", Codec.DOUBLE),  (c, v) -> c.targetPressure = v, c -> c.targetPressure).add()
                 .append(new KeyedCodec<>("MaxRate",        Codec.DOUBLE),  (c, v) -> c.maxRate        = v, c -> c.maxRate).add()
-                .append(new KeyedCodec<>("IsExtendable",   Codec.BOOLEAN), (c, v) -> c.isExtendable   = v, c -> c.isExtendable).add();
+                .append(new KeyedCodec<>("IsExtendable",   Codec.BOOLEAN), (c, v) -> c.isExtendable   = v, c -> c.isExtendable).add()
+                .append(new KeyedCodec<>("IsClosed",   Codec.BOOLEAN), (c, v) -> c.isClosed   = v, c -> c.isClosed).add();
+
         CODEC = b.build();
     }
 
@@ -44,20 +46,23 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public double targetPressure;  // Pa
     public double maxRate;         // mol/s
     public boolean isExtendable;
+    public boolean isClosed;
 
     public GasNetworkComponent() {
-        this(0, GasNetworkType.NONE, 0, 0, 0, false);
+        this(0, GasNetworkType.NONE, 0, 0, 0, false, false);
     }
 
     public GasNetworkComponent(double amount, GasNetworkType type,
                                double volume, double targetPressure,
-                               double maxRate, boolean isExtendable) {
+                               double maxRate, boolean isExtendable,
+                               boolean isClosed) {
         this.amount         = amount;
         this.type           = type;
         this.volume         = volume;
         this.targetPressure = targetPressure;
         this.maxRate        = maxRate;
         this.isExtendable   = isExtendable;
+        this.isClosed = isClosed;
     }
 
     public double pressure() {
@@ -91,6 +96,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     @Override
     public GasNetworkComponent calculateFlux(GasNetworkComponent from, GasNetworkComponent to) {
         GasNetworkComponent flux = zero();
+        if ((from.isClosed && from.type == GasNetworkType.VALVE) || (to.isClosed && to.type == GasNetworkType.VALVE)) return flux;
         if (from.volume <= 0 || to.volume <= 0) return flux;
 
         double totalAmount = from.amount + to.amount;
@@ -129,7 +135,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     @Override
     public GasNetworkComponent copy() {
-        return new GasNetworkComponent(amount, type, volume, targetPressure, maxRate, isExtendable);
+        return new GasNetworkComponent(amount, type, volume, targetPressure, maxRate, isExtendable, isClosed);
     }
 
     @Override

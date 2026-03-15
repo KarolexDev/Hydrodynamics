@@ -38,9 +38,9 @@
         "GasNetworkComponent": {
           "InitialAmount": 1,
           "InitialEnergy": 1,
-          "Type": "Pipe",
+          "Type": "Valve",
           "Volume": 0.25,
-          "IsExtendable": true
+          "IsExtendable": false
         }
       }
     },
@@ -75,7 +75,7 @@
               "Weight": 1
             }
           ],
-          "CustomModelAnimation": "Resources/Debug_Blocks/opening_valve.blockyanim",
+          "CustomModelAnimation": "Resources/Debug_Blocks/closing_valve.blockyanim",
           "DrawType": "Model"
         },
         "Closed": {
@@ -85,7 +85,7 @@
               "Texture": "Resources/Debug_Blocks/debug_valve_Iflat.png"
             }
           ],
-          "CustomModelAnimation": "Resources/Debug_Blocks/closing_valve.blockyanim",
+          "CustomModelAnimation": "Resources/Debug_Blocks/opening_valve.blockyanim",
           "DrawType": "Model"
         }
       }
@@ -94,7 +94,8 @@
       "Type": "CustomTemplate",
       "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
       "TemplateShapeBlockPatterns": {
-        "IFlat":        "*Debug_Valve_State_Definitions_Open"
+        "StubSide": "*Debug_Valve_State_Definitions_Open",
+        "IFlat": "*Debug_Valve_State_Definitions_Open"
       }
     },
     "Tags": {
@@ -131,7 +132,8 @@
           }
         ]
       }
-    }
+    },
+    "VariantRotation": "NESW"
   },
   "IconProperties": {
     "Scale": 0.9,
