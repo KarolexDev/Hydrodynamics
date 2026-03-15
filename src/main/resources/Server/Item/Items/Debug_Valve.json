@@ -1,0 +1,148 @@
+{
+  "TranslationProperties": {
+    "Name": "server.items.Debug_Pipe.name"
+  },
+  "ItemLevel": 15,
+  "MaxStack": 100,
+  "Icon": "Icons/ItemsGenerated/Debug_Valve.png",
+  "Categories": [
+    "Blocks.Structural"
+  ],
+  "PlayerAnimationsId": "Item",
+  "Interactions": {
+    "Primary": "Block_Primary",
+    "Secondary": "Block_Secondary"
+  },
+  "Set": "Wood_Softwood_Planks",
+  "Recipe": {
+    "Input": [
+      {
+        "ResourceTypeId": "Wood_Softwood",
+        "Quantity": 1
+      }
+    ],
+    "BenchRequirement": [
+      {
+        "Id": "Builders",
+        "Type": "StructuralCrafting",
+        "Categories": [
+          "Wall"
+        ]
+      }
+    ],
+    "OutputQuantity": 2
+  },
+  "BlockType": {
+    "BlockEntity": {
+      "Components": {
+        "GasNetworkComponent": {
+          "InitialAmount": 1,
+          "InitialEnergy": 1,
+          "Type": "Pipe",
+          "Volume": 0.25,
+          "IsExtendable": true
+        }
+      }
+    },
+    "Material": "Solid",
+    "DrawType": "Model",
+    "Opacity": "Transparent",
+    "CustomModel": "Resources/Debug_Blocks/debug_valve_Iflat.blockymodel",
+    "CustomModelTexture": [
+      {
+        "Texture": "Resources/Debug_Blocks/debug_valve_Iflat.png",
+        "Weight": 1
+      }
+    ],
+    "Group": "Wood",
+    "Flags": {},
+    "Gathering": {
+      "Breaking": {
+        "GatherType": "Woods",
+        "ItemId": "Wood_Softwood_Fence"
+      }
+    },
+    "BlockParticleSetId": "Wood",
+    "ParticleColor": "#65482d",
+    "BlockSoundSetId": "Wood",
+    "State": {
+      "Definitions": {
+        "Open": {
+          "CustomModel": "Resources/Debug_Blocks/debug_valve_Iflat.blockymodel",
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Blocks/debug_valve_Iflat.png",
+              "Weight": 1
+            }
+          ],
+          "CustomModelAnimation": "Resources/Debug_Blocks/opening_valve.blockyanim",
+          "DrawType": "Model"
+        },
+        "Closed": {
+          "CustomModel": "Resources/Debug_Blocks/debug_valve_Iflat.blockymodel",
+          "CustomModelTexture": [
+            {
+              "Texture": "Resources/Debug_Blocks/debug_valve_Iflat.png"
+            }
+          ],
+          "CustomModelAnimation": "Resources/Debug_Blocks/closing_valve.blockyanim",
+          "DrawType": "Model"
+        }
+      }
+    },
+    "ConnectedBlockRuleSet": {
+      "Type": "CustomTemplate",
+      "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
+      "TemplateShapeBlockPatterns": {
+        "IFlat":        "*Debug_Valve_State_Definitions_Open"
+      }
+    },
+    "Tags": {
+      "Type": [
+        "Wood"
+      ],
+      "Family": [
+        "Hardwood"
+      ]
+    },
+    "IconProperties": {
+      "Scale": 1.8,
+      "Rotation": [
+        22.5,
+        45,
+        22.5
+      ],
+      "Translation": [
+        0,
+        -13.5
+      ]
+    },
+    "Interactions": {
+      "Use": {
+        "Interactions": [
+          {
+            "Type": "ChangeState",
+            "UpdateBlockState": true,
+            "Changes": {
+              "default": "Open",
+              "Open": "Closed",
+              "Closed": "Open"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "IconProperties": {
+    "Scale": 0.9,
+    "Rotation": [
+      22.5,
+      45,
+      22.5
+    ],
+    "Translation": [
+      0,
+      -13.5
+    ]
+  }
+}
