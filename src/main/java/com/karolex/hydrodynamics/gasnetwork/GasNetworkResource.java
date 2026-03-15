@@ -17,6 +17,7 @@ public class GasNetworkResource extends BlockNetworkManager<GasNetworkComponent,
         GasNetworkComponent comp = getComponent(pos);
         if (comp == null) return;
         comp.isClosed = !comp.isClosed;
+        triggerUpdateWave(pos);
     }
 
     public static class GasNetwork extends BlockNetwork<GasNetworkComponent> {

@@ -5,6 +5,7 @@ public enum GasNetworkType {
     TANK,
     PIPE,
     VALVE,
+    PUMP,
     SOURCE,
     SINK;
 }

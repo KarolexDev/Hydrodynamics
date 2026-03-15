@@ -47,15 +47,16 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public double maxRate;         // mol/s
     public boolean isExtendable;
     public boolean isClosed;
+    public double cachedInletPressure;
 
     public GasNetworkComponent() {
-        this(0, GasNetworkType.NONE, 0, 0, 0, false, false);
+        this(0, GasNetworkType.NONE, 0, 0, 0, false, false, 0);
     }
 
     public GasNetworkComponent(double amount, GasNetworkType type,
                                double volume, double targetPressure,
                                double maxRate, boolean isExtendable,
-                               boolean isClosed) {
+                               boolean isClosed, double cachedInletPressure) {
         this.amount         = amount;
         this.type           = type;
         this.volume         = volume;
@@ -63,6 +64,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         this.maxRate        = maxRate;
         this.isExtendable   = isExtendable;
         this.isClosed = isClosed;
+        this.cachedInletPressure = cachedInletPressure;
     }
 
     public double pressure() {
@@ -98,6 +100,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         GasNetworkComponent flux = zero();
         if ((from.isClosed && from.type == GasNetworkType.VALVE) || (to.isClosed && to.type == GasNetworkType.VALVE)) return flux;
         if (from.volume <= 0 || to.volume <= 0) return flux;
+        if (from.type == GasNetworkType.PUMP || to.type == GasNetworkType.PUMP) { return calculatePumpFlux(from, to); }
 
         double totalAmount = from.amount + to.amount;
         double totalVolume = from.volume + to.volume;
@@ -121,6 +124,27 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         return flux;
     }
 
+    private GasNetworkComponent calculatePumpFlux(GasNetworkComponent from, GasNetworkComponent to) {
+        GasNetworkComponent flux = zero();
+
+        GasNetworkComponent pump      = from.type == GasNetworkType.PUMP ? from : to;
+        GasNetworkComponent neighbour = from.type == GasNetworkType.PUMP ? to   : from;
+
+        double pPump      = pump.pressure();
+        double pNeighbour = neighbour.pressure();
+        double dPActual   = pNeighbour - pPump;
+        double dPMax      = pump.targetPressure;
+
+        if (dPMax == 0) return flux;
+
+        double dt       = TICK_MS / 1000.0;
+        double transfer = pump.maxRate * dt * Math.clamp(1.0 - dPActual / dPMax, 0.0, 1.0);
+        transfer = Math.min(transfer, neighbour.amount - MIN_AMOUNT);
+
+        flux.amount = from.type == GasNetworkType.PUMP ? transfer : -transfer;
+        return flux;
+    }
+
     @Override
     public GasNetworkComponent[] partition(int leftSize, int rightSize) {
         double frac = (leftSize + rightSize > 0)
@@ -135,7 +159,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     @Override
     public GasNetworkComponent copy() {
-        return new GasNetworkComponent(amount, type, volume, targetPressure, maxRate, isExtendable, isClosed);
+        return new GasNetworkComponent(amount, type, volume, targetPressure, maxRate, isExtendable, isClosed, cachedInletPressure);
     }
 
     @Override

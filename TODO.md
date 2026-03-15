@@ -7,6 +7,8 @@
 - [ ] Add Fluid/Gas Distinction
 - [ ] Add Boiler Block (with UI)
 - [ ] Fix Update Wave Bug (sometimes pressures aren't updated properly...)
+- [ ] Refine Valve Block (MAKE IT LESS BUGGY!)
+- [ ] Implement Trigger Blocks when server starts...
 
 # Known Bugs
 - [ ] Valve Opens/Closes when adjacent pipes are placed or updated. Valves should by default be closed...

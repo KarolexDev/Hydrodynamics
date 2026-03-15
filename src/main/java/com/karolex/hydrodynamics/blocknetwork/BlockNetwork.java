@@ -77,6 +77,10 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         schedule.insert(node, Instant.EPOCH);
     }
 
+    public void triggerUpdateWave(Vector3i pos) {
+        triggerUpdateWave(nodeMap.get(pos));
+    }
+
     final class Node {
         C storage;
         final Set<Vector3i> blocks = new LinkedHashSet<>();

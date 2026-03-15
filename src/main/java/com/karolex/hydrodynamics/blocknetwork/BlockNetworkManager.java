@@ -84,6 +84,15 @@ public class BlockNetworkManager<C extends BlockNetworkComponent<C>, N extends B
         return null;
     }
 
+    public void triggerUpdateWave(Vector3i pos) {
+        for (N network : networks) {
+            if (network.containsBlock(pos)) {
+                network.triggerUpdateWave(pos);
+                return;
+            }
+        }
+    }
+
     @Override
     public @Nullable Resource<EntityStore> clone() {
         return new BlockNetworkManager<>(this.factory);
