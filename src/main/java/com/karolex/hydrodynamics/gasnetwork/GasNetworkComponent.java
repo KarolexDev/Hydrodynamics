@@ -96,7 +96,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
 
     @Override
-    public GasNetworkComponent calculateFlux(GasNetworkComponent from, GasNetworkComponent to) {
+    public GasNetworkComponent calculateFlux(GasNetworkComponent from, GasNetworkComponent to, String fromType, String toType) {
         GasNetworkComponent flux = zero();
         if ((from.isClosed && from.type == GasNetworkType.VALVE) || (to.isClosed && to.type == GasNetworkType.VALVE)) return flux;
         if (from.volume <= 0 || to.volume <= 0) return flux;

@@ -12,7 +12,7 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     C add(C flux);
     C del(C flux);
     C mergeComponents(C flux);
-    C calculateFlux(C from, C to);
+    C calculateFlux(C from, C to, String fromType, String toType);
     C[] partition(int left_size, int right_size);
     C zero();
 

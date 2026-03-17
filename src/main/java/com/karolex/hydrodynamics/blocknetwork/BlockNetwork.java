@@ -121,19 +121,24 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     final class Edge {
         final Vector3i from;
+        final String fromType;
+
         final Vector3i to;
+        final String toType;
         C flux;
 
-        Edge(Vector3i from, Vector3i to) {
+        Edge(Vector3i from, Vector3i to, String fromType, String toType) {
             this.from = new Vector3i(from);
+            this.fromType = fromType;
             this.to   = new Vector3i(to);
+            this.toType = toType;
         }
 
         Edge update() {
             Node fromNode = nodeMap.get(from);
             Node toNode   = nodeMap.get(to);
             if (fromNode != null && toNode != null)
-                flux = flux.calculateFlux(fromNode.storage, toNode.storage);
+                flux = flux.calculateFlux(fromNode.storage, toNode.storage, fromType, toType);
             return this;
         }
 
