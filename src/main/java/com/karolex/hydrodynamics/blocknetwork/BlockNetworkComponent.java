@@ -5,6 +5,7 @@ import com.hypixel.hytale.server.core.universe.world.World;
 
 import javax.annotation.Nullable;
 import java.time.Duration;
+import java.util.Map;
 
 public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
 
@@ -12,7 +13,7 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     C add(C flux);
     C del(C flux);
     C mergeComponents(C flux);
-    C calculateFlux(C from, C to);
+    C calculateFlux(C from, C to, String fromType, String toType);
     C[] partition(int left_size, int right_size);
     C zero();
 
@@ -30,4 +31,8 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     @Nullable
     Duration computeDelay(float dt, C previous, boolean isCapped);
     boolean isActive();
+
+    // To be implemented in default position (as for example in the blockbench editor). Return null for default.
+    Map<Vector3i, String> getConnectionPoints();
+
 }

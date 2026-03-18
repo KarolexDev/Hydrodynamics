@@ -37,17 +37,16 @@ public class HydrodynamicsPlugin extends JavaPlugin {
         this.getCommandRegistry().registerCommand(new ClearAllBlockNetworks());
 
         this.gasNetworkComponentType = this.getChunkStoreRegistry().registerComponent(GasNetworkComponent.class, "GasNetworkComponent", GasNetworkComponent.CODEC);
-
         this.gasNetworkResourceType = this.getEntityStoreRegistry().registerResource(GasNetworkResource.class, "GasNetworkResource", GasNetworkResource.CODEC);
 
         this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkTickingSystem());
         this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkBlockPlaceEventSystem());
         this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkBlockBreakEventSystem());
+        this.getEntityStoreRegistry().registerSystem(new GasNetworkSystem.NetworkBlockUseEventSystem());
 
         this.getCodecRegistry(Interaction.CODEC).register("ConfigurePipe", ConfigurePipeInteraction.class, ConfigurePipeInteraction.CODEC);
     }
 
     public ComponentType<ChunkStore, GasNetworkComponent> getGasNetworkComponentType() { return this.gasNetworkComponentType; }
-
     public ResourceType<EntityStore, GasNetworkResource> geGasNetworkResourceType() { return this.gasNetworkResourceType; }
 }
