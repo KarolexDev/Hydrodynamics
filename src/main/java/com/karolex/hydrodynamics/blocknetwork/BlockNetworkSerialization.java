@@ -3,6 +3,7 @@ package com.karolex.hydrodynamics.blocknetwork;
 import com.hypixel.hytale.codec.KeyedCodec;
 import com.hypixel.hytale.codec.builder.BuilderCodec;
 import com.hypixel.hytale.codec.codecs.array.ArrayCodec;
+import com.hypixel.hytale.codec.codecs.simple.StringCodec;
 import com.hypixel.hytale.math.vector.Vector3i;
 
 public class BlockNetworkSerialization {
@@ -27,7 +28,9 @@ public class BlockNetworkSerialization {
     }
     public static class EdgeDTO<C> {
         public Vector3i from;
+        public String fromType;
         public Vector3i to;
+        public String toType;
         public C flux;
 
         public static <C> BuilderCodec<EdgeDTO<C>> codec(BuilderCodec<C> componentCodec) {
@@ -37,9 +40,17 @@ public class BlockNetworkSerialization {
                             (d, v) -> d.from = v,
                             d -> d.from)
                     .add()
+                    .append(new KeyedCodec<>("FromType", new StringCodec()),
+                            (d, v) -> d.fromType = v,
+                            d -> d.fromType)
+                    .add()
                     .append(new KeyedCodec<>("To", Vector3i.CODEC),
                             (d, v) -> d.to = v,
                             d -> d.to)
+                    .add()
+                    .append(new KeyedCodec<>("ToType", new StringCodec()),
+                            (d, v) -> d.toType = v,
+                            d -> d.toType)
                     .add()
                     .append(new KeyedCodec<>("Flux", componentCodec),
                             (d, v) -> d.flux = v,

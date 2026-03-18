@@ -1,5 +1,7 @@
 package com.karolex.hydrodynamics.blocknetwork;
 
+import com.hypixel.hytale.server.core.asset.type.blocktype.config.Rotation;
+import com.hypixel.hytale.server.core.asset.type.blocktype.config.RotationTuple;
 import com.hypixel.hytale.server.core.modules.time.TimeResource;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.karolex.hydrodynamics.util.BlockUtil;
@@ -23,6 +25,8 @@ import java.util.function.Supplier;
  * @param <C>
  */
 public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
+
+    public static final String DEFAULT_CONNECTION_TYPE = "Default";
 
     private final Map<Vector3i, Node> nodeMap = new HashMap<>();
     private final Set<Node> nodes = new HashSet<>();
@@ -219,7 +223,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                         mergeInto(currentNew, neighbour);
                     } else {
                         if (neighbourExternal > 2) splitNode(theirPos, chunk);
-                        addEdge(ourPos, theirPos, currentNew.storage);
+                        addEdge(chunk, ourPos, theirPos, currentNew.storage);
                         Node refreshedNeighbour = nodeMap.get(theirPos);
                         if (refreshedNeighbour != null)
                             triggerUpdateWave(refreshedNeighbour);
@@ -230,7 +234,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 }
             } else {
                 // Different network component types.
-                addEdge(ourPos, theirPos, currentNew.storage);
+                addEdge(chunk, ourPos, theirPos, currentNew.storage);
                 triggerUpdateWave(neighbour);
             }
         }
@@ -440,15 +444,40 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         nodes.remove(absorbed);
     }
 
-    private void addEdge(Vector3i fromPos, Vector3i toPos, C storage) {
+    private void addEdge(WorldChunk chunk, Vector3i fromPos, Vector3i toPos, C storage) {
         Node a = nodeMap.get(fromPos);
         Node b = nodeMap.get(toPos);
         if (a == null || b == null) return;
         for (Edge existing : a.connectedEdges) {
             if (existing.other(a) == b) return;
         }
-        Edge edge = new Edge(new Vector3i(fromPos), new Vector3i(toPos));
-        edge.flux = storage.copy().zero(); // TODO: UGLY AF BUT STATIC METHODS AREN'T POSSIBLE WITH GENERICS ARHGRHGHG
+
+        String fromType;
+        Map<Vector3i, String> connectionPointsA = a.storage.getConnectionPoints();
+        if (connectionPointsA == null) {
+            fromType = DEFAULT_CONNECTION_TYPE;
+        } else {
+            @SuppressWarnings("removal")
+            Map<Vector3i, String> rotatedA = BlockUtil.rotateConnectionPoints(
+                    connectionPointsA, chunk.getRotation(fromPos.x, fromPos.y, fromPos.z));
+            Vector3i dirAtoB = new Vector3i(toPos.x - fromPos.x, toPos.y - fromPos.y, toPos.z - fromPos.z);
+            fromType = rotatedA.get(dirAtoB);
+        }
+
+        String toType;
+        Map<Vector3i, String> connectionPointsB = b.storage.getConnectionPoints();
+        if (connectionPointsB == null) {
+            toType = DEFAULT_CONNECTION_TYPE;
+        } else {
+            @SuppressWarnings("removal")
+            Map<Vector3i, String> rotatedB = BlockUtil.rotateConnectionPoints(
+                    connectionPointsB, chunk.getRotation(toPos.x, toPos.y, toPos.z));
+            Vector3i dirBtoA = new Vector3i(fromPos.x - toPos.x, fromPos.y - toPos.y, fromPos.z - toPos.z);
+            toType = rotatedB.get(dirBtoA);
+        }
+
+        Edge edge = new Edge(new Vector3i(fromPos), new Vector3i(toPos), fromType, toType);
+        edge.flux = storage.copy().zero();
         a.connectedEdges.add(edge);
         b.connectedEdges.add(edge);
     }
@@ -527,7 +556,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             }
 
             if (adjacentToJunction) {
-                Edge newEdge = new Edge(new Vector3i(segBoundary), new Vector3i(junctionPos));
+                Edge newEdge = new Edge(new Vector3i(segBoundary), new Vector3i(junctionPos), DEFAULT_CONNECTION_TYPE, DEFAULT_CONNECTION_TYPE);
                 newEdge.flux = oldNode.storage.zero();
                 seg.connectedEdges.add(newEdge);
                 junctionNode.connectedEdges.add(newEdge);
@@ -665,9 +694,11 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             for (Edge edge : node.connectedEdges) {
                 if (seen.add(edge)) {
                     EdgeDTO<C> dto = new EdgeDTO<>();
-                    dto.from = edge.from;
-                    dto.to   = edge.to;
-                    dto.flux = edge.flux;
+                    dto.from     = edge.from;
+                    dto.fromType = edge.fromType;
+                    dto.to       = edge.to;
+                    dto.toType   = edge.toType;
+                    dto.flux     = edge.flux;
                     result.add(dto);
                 }
             }
@@ -694,7 +725,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
     public void deserializeEdges(EdgeDTO<C>[] edgeDTOs) {
         for (EdgeDTO<C> dto : edgeDTOs) {
-            Edge edge = new Edge(dto.from, dto.to);
+            Edge edge = new Edge(dto.from, dto.to, dto.fromType, dto.toType);
             edge.flux = dto.flux;
             Node fromNode = nodeMap.get(dto.from);
             Node toNode   = nodeMap.get(dto.to);

@@ -1,6 +1,7 @@
 # To-Do List
 - [X] Add Valve Block
-- [ ] Add Pump Block
+- [X] Add Pump Block
+- [ ] Implement fixed rotation of pumpts and valves (current is too buggy).
 - [ ] Add Wrench Item (for rotating components and adjusting connections)
 - [ ] Add handheld Manometer or smth
 - [ ] Add own mod category

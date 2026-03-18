@@ -142,4 +142,19 @@ public class BlockUtil {
         );
         return result;
     }
+
+    public static Map<Vector3i, String> rotateConnectionPoints(
+            Map<Vector3i, String> connectionPoints,
+            RotationTuple rotation) {
+
+        Map<Vector3i, String> rotated = new HashMap<>();
+        for (Map.Entry<Vector3i, String> connection : connectionPoints.entrySet()) {
+            Vector3i worldDir = Rotation.rotate(
+                    connection.getKey().clone(),
+                    rotation.yaw(), rotation.pitch(), rotation.roll()
+            );
+            rotated.put(worldDir, connection.getValue());
+        }
+        return rotated;
+    }
 }

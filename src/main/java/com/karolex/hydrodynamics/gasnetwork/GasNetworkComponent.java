@@ -1,6 +1,7 @@
 package com.karolex.hydrodynamics.gasnetwork;
 
 import com.karolex.hydrodynamics.HydrodynamicsPlugin;
+import com.karolex.hydrodynamics.blocknetwork.BlockNetwork;
 import com.karolex.hydrodynamics.blocknetwork.BlockNetworkComponent;
 import com.hypixel.hytale.codec.Codec;
 import com.hypixel.hytale.codec.KeyedCodec;
@@ -14,6 +15,7 @@ import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.Map;
 
 public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComponent>, Component<ChunkStore> {
 
@@ -96,53 +98,71 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
 
     @Override
-    public GasNetworkComponent calculateFlux(GasNetworkComponent from, GasNetworkComponent to, String fromType, String toType) {
+    public GasNetworkComponent calculateFlux(GasNetworkComponent from, GasNetworkComponent to,
+                                             String fromType, String toType) {
         GasNetworkComponent flux = zero();
-        if ((from.isClosed && from.type == GasNetworkType.VALVE) || (to.isClosed && to.type == GasNetworkType.VALVE)) return flux;
+        if (from.isClosed || to.isClosed) return flux;
         if (from.volume <= 0 || to.volume <= 0) return flux;
-        if (from.type == GasNetworkType.PUMP || to.type == GasNetworkType.PUMP) { return calculatePumpFlux(from, to); }
 
-        double totalAmount = from.amount + to.amount;
-        double totalVolume = from.volume + to.volume;
-        double eqAmountFrom = totalAmount * (from.volume / totalVolume);
+        return switch (fromType + ":" + toType) {
+            case "Inlet:Default", "Default:Inlet" -> {
+                boolean pumpIsFrom = "Inlet".equals(fromType);
+                GasNetworkComponent pump     = pumpIsFrom ? from : to;
+                GasNetworkComponent neighbor = pumpIsFrom ? to   : from;
 
-        double transfer_ratio = 0.6;
+                // Target: p_neighbor - p_pump = dPTarget
+                // => eqNeighbor = (totalAmount/pump.volume + dPTarget/(R*T)) / (1/neighbor.volume + 1/pump.volume)
+                double dPTarget   = pump.targetPressure / 2.0;
+                double invPump    = 1.0 / pump.volume;
+                double invNeighbor= 1.0 / neighbor.volume;
+                double eqNeighbor = (((pump.amount + neighbor.amount) * invPump) + dPTarget / (R * TEMPERATURE))
+                        / (invNeighbor + invPump);
 
-        double delta = (from.amount - eqAmountFrom) * transfer_ratio;
+                double delta = (neighbor.amount - eqNeighbor) * 0.6; // positive = neighbor→pump
 
-        double lowerBound = -(to.amount - MIN_AMOUNT) * transfer_ratio;
-        double upperBound = (from.amount - MIN_AMOUNT) * transfer_ratio;
+                double lo = -(pump.amount     - MIN_AMOUNT);
+                double hi =  (neighbor.amount - MIN_AMOUNT);
+                if (lo > hi) yield flux;
 
-        if (upperBound < lowerBound) {
-            flux.amount = 0;
-            return flux;
-        }
+                flux.amount = pumpIsFrom ? -Math.clamp(delta, lo, hi) : Math.clamp(delta, lo, hi);
+                yield flux;
+            }
+            case "Outlet:Default", "Default:Outlet" -> {
+                boolean pumpIsFrom = "Outlet".equals(fromType);
+                GasNetworkComponent pump     = pumpIsFrom ? from : to;
+                GasNetworkComponent neighbor = pumpIsFrom ? to   : from;
 
-        delta = Math.clamp(delta, lowerBound, upperBound);
+                // Target: p_pump - p_neighbor = dPTarget
+                // => eqNeighbor = (totalAmount/pump.volume - dPTarget/(R*T)) / (1/neighbor.volume + 1/pump.volume)
+                double dPTarget   = pump.targetPressure / 2.0;
+                double invPump    = 1.0 / pump.volume;
+                double invNeighbor= 1.0 / neighbor.volume;
+                double eqNeighbor = (((pump.amount + neighbor.amount) * invPump) - dPTarget / (R * TEMPERATURE))
+                        / (invNeighbor + invPump);
 
-        flux.amount = delta;
-        return flux;
-    }
+                double delta = (neighbor.amount - eqNeighbor) * 0.6; // positive = backflow neighbor→pump
 
-    private GasNetworkComponent calculatePumpFlux(GasNetworkComponent from, GasNetworkComponent to) {
-        GasNetworkComponent flux = zero();
+                double lo = -(pump.amount     - MIN_AMOUNT);
+                double hi =  (neighbor.amount - MIN_AMOUNT);
+                if (lo > hi) yield flux;
 
-        GasNetworkComponent pump      = from.type == GasNetworkType.PUMP ? from : to;
-        GasNetworkComponent neighbour = from.type == GasNetworkType.PUMP ? to   : from;
+                flux.amount = pumpIsFrom ? -Math.clamp(delta, lo, hi) : Math.clamp(delta, lo, hi);
+                yield flux;
+            }
+            default -> {
+                double totalAmount    = from.amount + to.amount;
+                double totalVolume    = from.volume + to.volume;
+                double eqAmountFrom   = totalAmount * (from.volume / totalVolume);
+                double transfer_ratio = 0.6;
+                double delta          = (from.amount - eqAmountFrom) * transfer_ratio;
+                double lowerBound     = -(to.amount   - MIN_AMOUNT) * transfer_ratio;
+                double upperBound     =  (from.amount - MIN_AMOUNT) * transfer_ratio;
 
-        double pPump      = pump.pressure();
-        double pNeighbour = neighbour.pressure();
-        double dPActual   = pNeighbour - pPump;
-        double dPMax      = pump.targetPressure;
-
-        if (dPMax == 0) return flux;
-
-        double dt       = TICK_MS / 1000.0;
-        double transfer = pump.maxRate * dt * Math.clamp(1.0 - dPActual / dPMax, 0.0, 1.0);
-        transfer = Math.min(transfer, neighbour.amount - MIN_AMOUNT);
-
-        flux.amount = from.type == GasNetworkType.PUMP ? transfer : -transfer;
-        return flux;
+                if (upperBound < lowerBound) yield flux;
+                flux.amount = Math.clamp(delta, lowerBound, upperBound);
+                yield flux;
+            }
+        };
     }
 
     @Override
@@ -198,6 +218,21 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     @Override
     public boolean isActive() {
         return type == GasNetworkType.SOURCE || type == GasNetworkType.SINK;
+    }
+
+    @Override
+    public Map<Vector3i, String> getConnectionPoints() {
+        return switch (type) {
+            case VALVE -> Map.of(
+                    new Vector3i(-1, 0, 0), BlockNetwork.DEFAULT_CONNECTION_TYPE,
+                    new Vector3i( 1, 0, 0), BlockNetwork.DEFAULT_CONNECTION_TYPE
+            );
+            case PUMP -> Map.of(
+                    new Vector3i(-1, 0, 0), "Inlet",
+                    new Vector3i( 1, 0, 0), "Outlet"
+            );
+            default -> null;
+        };
     }
 
     @Override

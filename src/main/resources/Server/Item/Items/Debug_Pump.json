@@ -40,7 +40,8 @@
           "InitialEnergy": 1,
           "Type": "Pump",
           "Volume": 0.25,
-          "TargetPressure": 30000
+          "TargetPressure": 30000,
+          "MaxRate": 100
         }
       }
     },
