@@ -70,7 +70,6 @@
       "Type": "CustomTemplate",
       "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
       "TemplateShapeBlockPatterns": {
-        "StubSide": "Debug_Pump",
         "IFlat": "Debug_Pump"
       }
     },

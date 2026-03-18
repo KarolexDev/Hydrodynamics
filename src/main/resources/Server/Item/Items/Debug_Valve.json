@@ -93,8 +93,7 @@
       "Type": "CustomTemplate",
       "TemplateShapeAssetId": "PipeConnectedBlockTemplate",
       "TemplateShapeBlockPatterns": {
-        "StubSide": "*Debug_Valve_State_Definitions_Open",
-        "IFlat": "*Debug_Valve_State_Definitions_Open"
+        "IFlat": "*Debug_Valve_State_Definitions_Closed"
       }
     },
     "Tags": {
@@ -124,7 +123,7 @@
             "Type": "ChangeState",
             "UpdateBlockState": true,
             "Changes": {
-              "default": "Open",
+              "default": "Closed",
               "Open": "Closed",
               "Closed": "Open"
             }

@@ -105,6 +105,36 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         if (from.volume <= 0 || to.volume <= 0) return flux;
 
         return switch (fromType + ":" + toType) {
+            case "Inlet:Outlet" -> {
+                // from-Inlet + to-Outlet: beide pumpen gas to→from
+                // Ziel: p_to - p_from = (from.targetPressure + to.targetPressure) / 2
+                double dPTotal = (from.targetPressure + to.targetPressure) / 2.0;
+                double invFrom = 1.0 / from.volume;
+                double invTo   = 1.0 / to.volume;
+                double eqFrom  = ((from.amount + to.amount) / to.volume - dPTotal / (R * TEMPERATURE))
+                        / (invFrom + invTo);
+                double delta   = (from.amount - eqFrom) * 0.6;
+                double lo = -(to.amount   - MIN_AMOUNT);
+                double hi =  (from.amount - MIN_AMOUNT);
+                if (lo > hi) yield flux;
+                flux.amount = Math.clamp(delta, lo, hi);
+                yield flux;
+            }
+            case "Outlet:Inlet" -> {
+                // from-Outlet + to-Inlet: beide pumpen gas from→to
+                // Ziel: p_from - p_to = (from.targetPressure + to.targetPressure) / 2
+                double dPTotal = (from.targetPressure + to.targetPressure) / 2.0;
+                double invFrom = 1.0 / from.volume;
+                double invTo   = 1.0 / to.volume;
+                double eqFrom  = ((from.amount + to.amount) / to.volume + dPTotal / (R * TEMPERATURE))
+                        / (invFrom + invTo);
+                double delta   = (from.amount - eqFrom) * 0.6;
+                double lo = -(to.amount   - MIN_AMOUNT);
+                double hi =  (from.amount - MIN_AMOUNT);
+                if (lo > hi) yield flux;
+                flux.amount = Math.clamp(delta, lo, hi);
+                yield flux;
+            }
             case "Inlet:Default", "Default:Inlet" -> {
                 boolean pumpIsFrom = "Inlet".equals(fromType);
                 GasNetworkComponent pump     = pumpIsFrom ? from : to;
