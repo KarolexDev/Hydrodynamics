@@ -1,7 +1,5 @@
 package com.karolex.hydrodynamics.blocknetwork;
 
-import com.hypixel.hytale.server.core.asset.type.blocktype.config.Rotation;
-import com.hypixel.hytale.server.core.asset.type.blocktype.config.RotationTuple;
 import com.hypixel.hytale.server.core.modules.time.TimeResource;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.karolex.hydrodynamics.util.BlockUtil;
@@ -14,7 +12,6 @@ import com.hypixel.hytale.server.core.asset.type.blocktype.config.BlockType;
 import com.hypixel.hytale.server.core.universe.world.chunk.WorldChunk;
 import com.karolex.hydrodynamics.util.UniqueSchedule;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Supplier;
@@ -37,48 +34,81 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
         this.factory = factory;
     }
 
-    private final UniqueSchedule<Node> schedule = new UniqueSchedule<>();
+    public long tick_counter = 0;
+    private final UniqueSchedule<Node, Long> schedule = new UniqueSchedule<>();
     private final HashSet<Node> visitedNodes = new HashSet<>();
 
     private final World world;
 
     void tick() {
-        Instant now = world.getEntityStore()
-                .getStore()
-                .getResource(TimeResource.getResourceType()).getNow();
         Set<Node> newVisitedNodes = new HashSet<>();
         Set<Node> nextWave = new HashSet<>();
         Set<Edge> updatedEdges = new HashSet<>();
+        Map<Node, Long> pendingInserts = new LinkedHashMap<>(); // Instant → Long
 
-        while (!schedule.isEmpty() && !schedule.peekEarliestTimestamp().isAfter(now)) {
+        while (!schedule.isEmpty() && schedule.peekEarliestTimestamp() != null && schedule.peekEarliestTimestamp().compareTo(tick_counter) <= 0) { // isAfter → <=
             Node node = schedule.pollEarliest();
             newVisitedNodes.add(node);
+            node.update(world);
 
-            // Update Edges first!
+            List<Map.Entry<String, C>> incomingFlux = new ArrayList<>();
+            List<Map.Entry<String, C>> outgoingFlux = new ArrayList<>();
+            List<Edge> outgoingEdges = new ArrayList<>();
+
             for (Edge edge : node.connectedEdges) {
                 if (updatedEdges.add(edge)) edge.update();
 
-                // If that causes bugs, move this section into a separate for-loop
                 Node otherNode = edge.other(node);
                 if (otherNode == null) continue;
-                if (visitedNodes.contains(otherNode)) continue;
+
+                String connType = getConnectionType(node, edge);
+
+                if (visitedNodes.contains(otherNode))
+                    incomingFlux.add(Map.entry(connType, edge.flux));
+
                 nextWave.add(otherNode);
+                outgoingFlux.add(Map.entry(connType, edge.flux));
+                outgoingEdges.add(edge);
             }
 
-            Duration delay = node.update(now, world);
-            if (delay != null) schedule.insert(node, now.plus(delay));
+            List<C> result = node.storage.divideFluxFlow(incomingFlux, outgoingFlux);
+
+            for (int i = 0; i < outgoingEdges.size(); i++) {
+                C flux_cap = result.get(i);
+                Edge e = outgoingEdges.get(i);
+                Node fromNode   = nodeMap.get(e.from);
+                Node toNode     = nodeMap.get(e.to);
+                String fromNodeType = e.fromType;
+                String toNodeType   = e.toType;
+                e.flux = e.flux.calculateFlux(flux_cap, fromNode.storage, toNode.storage, fromNodeType, toNodeType);
+            }
+
+            if (!node.storage.fluxAmountsToZero(incomingFlux, outgoingFlux)) {
+                Integer delay = node.storage.computeDelay(incomingFlux, outgoingFlux);
+                if (delay != null) pendingInserts.put(node, tick_counter + (long) delay); // now.plusMillis → tick_counter +
+            }
         }
 
-        for (Node node : nextWave) schedule.insert(node, Instant.EPOCH);
+        for (Map.Entry<Node, Long> entry : pendingInserts.entrySet()) // Instant → Long
+            schedule.insert(entry.getKey(), entry.getValue());
+        for (Node node : nextWave) schedule.insert(node, tick_counter + 1L); // now → tick_counter + 1
 
         visitedNodes.clear();
         visitedNodes.addAll(newVisitedNodes);
+
+        ++tick_counter;
     }
 
     void triggerUpdateWave(Node node) {
         if (node == null) return;
         visitedNodes.remove(node);
-        schedule.insert(node, Instant.EPOCH);
+        schedule.insert(node, 0L); // Instant.EPOCH → 0L (immer frühestmöglich)
+    }
+
+    String getConnectionType(Node node, Edge edge) {
+        if (nodeMap.get(edge.to) == node) return edge.toType;
+        if (nodeMap.get(edge.from) == node) return edge.fromType;
+        return null;
     }
 
     public void triggerUpdateWave(Vector3i pos) {
@@ -93,11 +123,7 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
 
         Node(Instant timeOfCreation) { lastUpdated = timeOfCreation; }
 
-        Duration update(Instant now, World world) {
-            float dt = Duration.between(lastUpdated, now).toNanos() * 1e-9f;
-            lastUpdated = now;
-            C previous = storage.copy(); // Snapshot vorher
-
+        void update(World world) {
             for (Edge edge : connectedEdges) {
                 if (nodeMap.get(edge.from) == this) {
                     storage.del(edge.flux);
@@ -107,9 +133,6 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 // edge.flux = edge.flux.zero();
             }
 
-            // Do whatever it gotta do...
-            storage.tick(dt);
-
             // World update hook
             if (storage.requiresWorldUpdate()) {
                 for (Vector3i pos : blocks) {
@@ -118,8 +141,6 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                     capturedStorage.onWorldUpdate(capturedPos, world);
                 }
             }
-
-            return storage.computeDelay(dt, previous, storage.isActive());
         }
     }
 

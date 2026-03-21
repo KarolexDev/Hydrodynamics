@@ -240,9 +240,10 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
 
     @Override
     public Duration computeDelay(float dt, GasNetworkComponent previous, boolean isActive) {
-        if (isActive) return Duration.ofMillis(TICK_MS);
-        double dP = Math.abs(pressure() - previous.pressure());
-        return dP < 0.01 ? null : Duration.ofMillis(TICK_MS);
+        double diff = Math.abs(pressure() - previous.pressure());
+        if (diff == 0) return null;
+        double delay = 1e-4f * pressure() / diff * dt; // 0.1% * current / current_change_rate = delay
+        return Duration.ofMillis(Math.round(delay));
     }
 
     @Override

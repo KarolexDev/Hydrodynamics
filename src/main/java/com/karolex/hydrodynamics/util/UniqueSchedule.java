@@ -1,17 +1,16 @@
 package com.karolex.hydrodynamics.util;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class UniqueSchedule<T> {
+public class UniqueSchedule<T, S extends Comparable<S>> {
 
-    private final TreeMap<Instant, T> sorted = new TreeMap<>();
-    private final HashMap<T, Instant> timestamps = new HashMap<>();
+    private final TreeMap<S, T> sorted = new TreeMap<>();
+    private final HashMap<T, S> timestamps = new HashMap<>();
 
-    public void insert(T obj, Instant timestamp) {
-        Instant existing = timestamps.get(obj);
+    public void insert(T obj, S timestamp) {
+        S existing = timestamps.get(obj);
         if (existing != null) sorted.remove(existing);
 
         timestamps.put(obj, timestamp);
@@ -19,17 +18,17 @@ public class UniqueSchedule<T> {
     }
 
     public T peekEarliest() {
-        Map.Entry<Instant, T> entry = sorted.firstEntry();
+        Map.Entry<S, T> entry = sorted.firstEntry();
         return entry != null ? entry.getValue() : null;
     }
 
-    public Instant peekEarliestTimestamp() {
-        Map.Entry<Instant, T> entry = sorted.firstEntry();
-        return entry != null ? entry.getKey() : Instant.MAX;
+    public S peekEarliestTimestamp() {
+        Map.Entry<S, T> entry = sorted.firstEntry();
+        return entry != null ? entry.getKey() : null;
     }
 
     public T pollEarliest() {
-        Map.Entry<Instant, T> entry = sorted.pollFirstEntry();
+        Map.Entry<S, T> entry = sorted.pollFirstEntry();
         if (entry == null) return null;
         timestamps.remove(entry.getValue());
         return entry.getValue();
