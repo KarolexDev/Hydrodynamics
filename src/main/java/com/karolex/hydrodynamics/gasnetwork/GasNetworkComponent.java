@@ -24,6 +24,8 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public static final double TEMPERATURE = 293.0;  // K, fix
     public static final double MIN_AMOUNT  = 1e-10;
 
+    public static final double DEFAULT_CONDUCTANCE = 5e-5d; // TODO: THAT VALUE WORKS WELL!
+
     public static final BuilderCodec<GasNetworkComponent> CODEC;
 
     static {
@@ -52,7 +54,7 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public boolean isClosed;
 
     public GasNetworkComponent() {
-        this(0, GasNetworkType.NONE, 0, 0, 0, 1.0, false, false);
+        this(0, GasNetworkType.NONE, 0, 0, 0, DEFAULT_CONDUCTANCE, false, false);
     }
 
     public GasNetworkComponent(double amount, GasNetworkType type,
@@ -111,6 +113,8 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
     public GasNetworkComponent calculateFlux(GasNetworkComponent fluxCap,
                                              GasNetworkComponent from, GasNetworkComponent to,
                                              String fromType, String toType) {
+
+        // TODO: THAT METHOD IS BULLSHIT. IMPLEMENT OWN CLAMPS, WTH IS THIS SHIT??
         GasNetworkComponent flux = zero();
         if (from.isClosed || to.isClosed)       return flux;
         if (from.volume <= 0 || to.volume <= 0) return flux;
@@ -124,7 +128,8 @@ public class GasNetworkComponent implements BlockNetworkComponent<GasNetworkComp
         // Quellen und Senken erzeugen/vernichten Flux — externer Cap greift nicht.
         boolean isActiveEdge = from.isActive() || to.isActive();
         if (isActiveEdge) {
-            double cap = Math.abs(Math.max(from.pressure(), to.pressure()) * Math.min(from.volume, to.volume) / (R * TEMPERATURE));
+            // double cap = Math.abs(Math.max(from.pressure(), to.pressure()) * Math.min(from.volume, to.volume) / (R * TEMPERATURE));
+            double cap = Math.abs( 1e5d * Math.min(from.volume, to.volume) / (R * TEMPERATURE));
             flux.amount = Math.clamp(ohmCapped, -cap, cap);
         } else {
             double cap = Math.min(Math.abs(fluxCap.amount), Math.abs(from.pressure() * Math.min(from.volume, to.volume) / (R * TEMPERATURE)));

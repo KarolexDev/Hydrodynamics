@@ -75,8 +75,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             }
             List<C> result = node.storage.divideFluxFlow(incomingFlux, outgoingFlux);
 
-            // TODO: THIS DOESN'T WORK. TANKS DON'T GET FILLED UP AND FOR SOME REASON THE FLUXES ARE ALL FUCKED UP AGHFGHAGHAGHAG...
-            if (incomingFlux.size() == 1) outgoingFlux = incomingFlux; // Temp. fix
+//            // TODO: THIS DOESN'T WORK. TANKS DON'T GET FILLED UP AND FOR SOME REASON THE FLUXES ARE ALL FUCKED UP AGHFGHAGHAGHAG...
+//            if (incomingFlux.size() == 1) outgoingFlux = incomingFlux; // Temp. fix
 
             for (int i = 0; i < outgoingEdges.size(); i++) {
                 C flux_cap = result.get(i);
