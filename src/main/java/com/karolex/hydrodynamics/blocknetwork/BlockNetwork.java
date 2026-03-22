@@ -56,31 +56,32 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             List<Edge> outgoingEdges = new ArrayList<>();
 
             for (Edge edge : node.connectedEdges) {
-                if (updatedEdges.add(edge)) edge.update();
-
                 Node otherNode = edge.other(node);
                 if (otherNode == null) continue;
 
                 String connType = getConnectionType(node, edge);
 
-                if (visitedNodes.contains(otherNode))
-                    incomingFlux.add(Map.entry(connType, edge.flux));
+                // Flux aus Sicht dieses Nodes: positiv = verlässt diesen Node
+                boolean thisIsFrom = (nodeMap.get(edge.from) == node);
+                C perspectiveFlux = thisIsFrom ? edge.flux : edge.flux.negate();
 
-                nextWave.add(otherNode);
-                outgoingFlux.add(Map.entry(connType, edge.flux));
-                outgoingEdges.add(edge);
+                if (visitedNodes.contains(otherNode)) {
+                    incomingFlux.add(Map.entry(connType, perspectiveFlux));
+                } else {
+                    nextWave.add(otherNode);
+                    outgoingFlux.add(Map.entry(connType, perspectiveFlux));
+                    outgoingEdges.add(edge);
+                }
             }
-
             List<C> result = node.storage.divideFluxFlow(incomingFlux, outgoingFlux);
+
+            // TODO: THIS DOESN'T WORK. TANKS DON'T GET FILLED UP AND FOR SOME REASON THE FLUXES ARE ALL FUCKED UP AGHFGHAGHAGHAG...
+            if (incomingFlux.size() == 1) outgoingFlux = incomingFlux; // Temp. fix
 
             for (int i = 0; i < outgoingEdges.size(); i++) {
                 C flux_cap = result.get(i);
                 Edge e = outgoingEdges.get(i);
-                Node fromNode   = nodeMap.get(e.from);
-                Node toNode     = nodeMap.get(e.to);
-                String fromNodeType = e.fromType;
-                String toNodeType   = e.toType;
-                e.flux = e.flux.calculateFlux(flux_cap, fromNode.storage, toNode.storage, fromNodeType, toNodeType);
+                e.update(flux_cap);
             }
 
             if (!node.storage.fluxAmountsToZero(incomingFlux, outgoingFlux)) {
@@ -133,6 +134,8 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
                 // edge.flux = edge.flux.zero();
             }
 
+            storage.tick();
+
             // World update hook
             if (storage.requiresWorldUpdate()) {
                 for (Vector3i pos : blocks) {
@@ -159,11 +162,11 @@ public abstract class BlockNetwork<C extends BlockNetworkComponent<C>> {
             this.toType = toType;
         }
 
-        Edge update() {
+        Edge update(C fluxCap) {
             Node fromNode = nodeMap.get(from);
             Node toNode   = nodeMap.get(to);
             if (fromNode != null && toNode != null)
-                flux = flux.calculateFlux(fromNode.storage, toNode.storage, fromType, toType);
+                flux = flux.calculateFlux(fluxCap, fromNode.storage, toNode.storage, fromType, toType);
             return this;
         }
 

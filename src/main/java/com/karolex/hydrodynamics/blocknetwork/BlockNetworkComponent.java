@@ -2,9 +2,8 @@ package com.karolex.hydrodynamics.blocknetwork;
 
 import com.hypixel.hytale.math.vector.Vector3i;
 import com.hypixel.hytale.server.core.universe.world.World;
+import com.karolex.hydrodynamics.gasnetwork.GasNetworkComponent;
 
-import javax.annotation.Nullable;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -14,7 +13,20 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     C add(C flux);
     C del(C flux);
     C mergeComponents(C flux);
-    C calculateFlux(C from, C to, String fromType, String toType);
+    C calculateFlux(C fluxCap, C from, C to, String fromType, String toType);
+
+    List<C> divideFluxFlow(
+            List<Map.Entry<String, C>> incomingFlux,
+            List<Map.Entry<String, C>> outgoingFlux);
+
+    Integer computeDelay(
+            List<Map.Entry<String, C>> incomingFlux,
+            List<Map.Entry<String, C>> outgoingFlux);
+
+    boolean fluxAmountsToZero(
+            List<Map.Entry<String, C>> incomingFlux,
+            List<Map.Entry<String, C>> outgoingFlux);
+
     C[] partition(int left_size, int right_size);
     C zero();
 
@@ -25,18 +37,15 @@ public interface BlockNetworkComponent<C extends BlockNetworkComponent<C>> {
     C copy();
 
     boolean shouldMerge(C other);
-    default boolean isPipe() { return false; };
+    default boolean isPipe() { return false; }
 
-    void tick(float dt);
+    void tick();
 
-    @Nullable
-    Duration computeDelay(float dt, C previous, boolean isCapped);
     boolean isActive();
 
     // To be implemented in default position (as for example in the blockbench editor). Return null for default.
     Map<Vector3i, String> getConnectionPoints();
 
-    <C extends BlockNetworkComponent<C>> List<C> divideFluxFlow(List<Map.Entry<String,C>> incomingFlux, List<Map.Entry<String,C>> outgoingFlux);
-
-    <C extends BlockNetworkComponent<C>> Integer computeDelay(List<Map.Entry<String,C>> incomingFlux, List<Map.Entry<String,C>> outgoingFlux);
+    // BlockNetworkComponent
+    C negate();
 }
